@@ -1,0 +1,8 @@
+{
+  "name": "SOTRA FASHION - متجر سترة فاشون ولوحة التحكم وقاعدة بيانات Firebase",
+  "description": "متجر أزياء وملابس رياضية فاخر متصل بقاعدة بيانات Firebase Firestore لإدارة المنتجات، الأقسام، العروض، والطلبات سحابياً، مع إمكانية مسح البيانات التجريبية وإضافة المنتجات الخاصة مباشرة من لوحة الإدارة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

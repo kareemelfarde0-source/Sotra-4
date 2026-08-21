@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firestore-blueprint.json",
+  "entities": {
+    "Product": {
+      "collection": "products",
+      "description": "Store products with variants, sizes, inventory, and categorization",
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "titleAr": { "type": "string", "required": true },
+        "fit": { "type": "string" },
+        "fitAr": { "type": "string" },
+        "category": { "type": "string", "required": true },
+        "offerCategory": { "type": "string" },
+        "price": { "type": "number", "required": true },
+        "originalPrice": { "type": "number" },
+        "discountPercent": { "type": "number" },
+        "inStock": { "type": "boolean", "required": true },
+        "colors": { "type": "array" },
+        "sizes": { "type": "array" },
+        "inventory": { "type": "map" }
+      }
+    },
+    "Category": {
+      "collection": "categories",
+      "description": "Product categories",
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "nameAr": { "type": "string", "required": true },
+        "image": { "type": "string" }
+      }
+    },
+    "OfferCategory": {
+      "collection": "offerCategories",
+      "description": "Special offer categories and sales",
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "nameAr": { "type": "string", "required": true },
+        "image": { "type": "string" }
+      }
+    },
+    "Banner": {
+      "collection": "banners",
+      "description": "Hero promo banners",
+      "fields": {
+        "image": { "type": "string", "required": true },
+        "title": { "type": "string" },
+        "titleAr": { "type": "string" }
+      }
+    },
+    "PromoCode": {
+      "collection": "coupons",
+      "description": "Discount codes and promotional coupons",
+      "fields": {
+        "code": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "value": { "type": "number", "required": true },
+        "isActive": { "type": "boolean", "required": true }
+      }
+    },
+    "Order": {
+      "collection": "orders",
+      "description": "Customer purchase orders and tracking details",
+      "fields": {
+        "orderId": { "type": "string", "required": true },
+        "createdAt": { "type": "string", "required": true },
+        "total": { "type": "number", "required": true },
+        "trackingStatus": { "type": "string", "required": true }
+      }
+    },
+    "Customer": {
+      "collection": "customers",
+      "description": "Customer profile information, address, phone numbers, and history",
+      "fields": {
+        "phoneNumber": { "type": "string", "required": true },
+        "fullName": { "type": "string", "required": true },
+        "secondaryPhone": { "type": "string" },
+        "governorateId": { "type": "string", "required": true },
+        "detailedAddress": { "type": "string", "required": true },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  }
+}

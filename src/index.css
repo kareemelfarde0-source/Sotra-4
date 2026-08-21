@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-size: 14.5px; /* Subtle base reduction for cleaner modern density */
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    font-family: 'Cairo', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.935rem; /* Compact & refined typography throughout */
+    line-height: 1.5;
+    font-family: 'Cairo', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  * {
+    box-sizing: border-box;
+    font-family: 'Cairo', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .font-brand {
+    font-family: 'Montserrat', 'Cairo', sans-serif;
+    letter-spacing: 0.04em;
+  }
+  .font-arabic {
+    font-family: 'Cairo', sans-serif;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes sotraShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-sotra-shimmer {
+  animation: sotraShimmer 1.8s infinite ease-in-out;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 12s linear infinite;
+}
