@@ -43,7 +43,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
   return (
     <div className="border-b border-neutral-200 bg-white">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar py-2.5 sm:py-3">
+        <div className="flex items-center gap-5 sm:gap-7 overflow-x-auto no-scrollbar py-3 sm:py-3.5">
           {pills.map((tab) => {
             const isActive = selectedCategory === tab.id;
             return (
@@ -51,13 +51,13 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
                 key={`cat-pill-${tab.id}`}
                 id={`tab-pill-${tab.id}`}
                 onClick={() => onSelectCategory(tab.id)}
-                className={`text-sm sm:text-base font-bold whitespace-nowrap pb-2 pt-1 transition-all relative cursor-pointer ${
+                className={`text-sm sm:text-[17px] font-bold whitespace-nowrap pb-2.5 pt-1.5 transition-all relative cursor-pointer font-brand ${
                   isActive ? "text-neutral-950 font-black" : "text-neutral-500 hover:text-neutral-800"
                 }`}
               >
                 {lang === "ar" ? tab.labelAr : tab.labelEn}
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-neutral-950 rounded-full animate-fade-in" />
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-neutral-950 rounded-none animate-fade-in" />
                 )}
               </button>
             );

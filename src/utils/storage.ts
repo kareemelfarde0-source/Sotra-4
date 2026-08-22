@@ -453,6 +453,79 @@ export function isOutOfStock(qty: number): boolean {
   return qty <= 0;
 }
 
+/**
+ * Checks if the entire product model is out of stock across all colors & sizes
+ */
+export function isProductModelOutOfStock(product: Product): boolean {
+  if (!product) return false;
+  if (product.inStock === false) return true;
+
+  if (product.inventory && Object.keys(product.inventory).length > 0) {
+    const totalInventoryQty = Object.values(product.inventory).reduce(
+      (sum, item) => sum + (Number(item?.qty) || 0),
+      0
+    );
+    if (totalInventoryQty <= 0) return true;
+  }
+
+  const safeColors = Array.isArray(product.colors) && product.colors.length > 0 ? product.colors : [];
+  const safeSizes = Array.isArray(product.sizes) && product.sizes.length > 0 ? product.sizes : [];
+
+  if (safeColors.length > 0 && safeSizes.length > 0 && product.inventory && Object.keys(product.inventory).length > 0) {
+    const hasAnyInStock = safeColors.some((col) =>
+      safeSizes.some((sz) => getVariantStock(product, col, sz) > 0)
+    );
+    if (!hasAnyInStock) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if a specific color variant is completely out of stock across all its sizes
+ */
+export function isColorVariantOutOfStock(product: Product, color: ColorVariant): boolean {
+  if (!product || !color) return false;
+  if (isProductModelOutOfStock(product)) return true;
+
+  const safeSizes = Array.isArray(product.sizes) && product.sizes.length > 0 ? product.sizes : ["S", "M", "L", "XL", "XXL"];
+  if (product.inventory && Object.keys(product.inventory).length > 0) {
+    const colorTotal = safeSizes.reduce((acc, sz) => acc + getVariantStock(product, color, sz), 0);
+    return colorTotal <= 0;
+  }
+
+  return false;
+}
+
+/**
+ * Generates accurate out of stock text based on model / color / size availability
+ */
+export function getOutOfStockMessage(
+  product: Product,
+  color?: ColorVariant,
+  size?: string,
+  lang: "ar" | "en" = "ar"
+): string {
+  if (!product) return lang === "ar" ? "نفد من المخزون" : "Out of stock";
+
+  if (isProductModelOutOfStock(product)) {
+    return lang === "ar" ? "نفدت المقاسات بهذا الموديل" : "Out of stock for this model";
+  }
+
+  if (color && isColorVariantOutOfStock(product, color)) {
+    return lang === "ar" ? "نفدت المقاسات الخاصة بهذا اللون" : "Out of stock for this color";
+  }
+
+  if (color && size) {
+    const stock = getVariantStock(product, color, size);
+    if (stock <= 0) {
+      return lang === "ar" ? "نفدت الكمية الخاصة بهذا المقاس" : "Out of stock for this size";
+    }
+  }
+
+  return lang === "ar" ? "نفد من المخزون" : "Out of stock";
+}
+
 export function decrementInventory(orderItems: CartItem[]): void {
   const adminData = loadAdminData();
   let changed = false;

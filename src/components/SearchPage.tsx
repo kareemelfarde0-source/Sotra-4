@@ -6,6 +6,7 @@ import { ProductCard } from "./ProductCard";
 interface SearchPageProps {
   products: Product[];
   onOpenProductModal: (product: Product, selectedColorIndex: number) => void;
+  onQuickView?: (product: Product, selectedColorIndex: number) => void;
   onQuickAdd: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onQuickOrderNow: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onOpenLightbox: (imageUrl: string) => void;
@@ -17,6 +18,7 @@ interface SearchPageProps {
 export const SearchPage: React.FC<SearchPageProps> = ({
   products,
   onOpenProductModal,
+  onQuickView,
   onQuickAdd,
   onQuickOrderNow,
   onOpenLightbox,
@@ -189,9 +191,10 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                 key={product.id}
                 product={product}
                 onOpenProductModal={() => onOpenProductModal(product, 0)}
+                onQuickView={onQuickView}
                 onQuickAdd={onQuickAdd}
                 onQuickOrderNow={onQuickOrderNow}
-                onOpenLightbox={onOpenLightbox}
+                onOpenLightbox={onOpenLightbox as any}
                 layoutCols={3}
                 lang={lang}
                 globalDiscountStyle={globalDiscountStyle}

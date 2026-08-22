@@ -115,12 +115,12 @@ export const HeroCategorySlider: React.FC<HeroCategorySliderProps> = ({
       </div>
 
       <div
-        className="relative w-full h-[250px] sm:h-[290px] flex items-center justify-center overflow-hidden py-1"
+        className="relative w-full h-[285px] sm:h-[340px] flex items-center justify-center overflow-hidden py-2"
         style={{ perspective: "1100px" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="relative w-full max-w-4xl h-full flex items-center justify-center">
+        <div className="relative w-full max-w-5xl h-full flex items-center justify-center">
           {safeCategories.map((cat, idx) => {
             const count = safeCategories.length;
             let offset = idx - activeIndex;
@@ -133,9 +133,9 @@ export const HeroCategorySlider: React.FC<HeroCategorySliderProps> = ({
             const isCenter = offset === 0;
             const isSelected = selectedCategory === cat.id;
             const rotateY = offset * -28;
-            const translateX = offset * (typeof window !== "undefined" && window.innerWidth < 640 ? 115 : 170);
+            const translateX = offset * (typeof window !== "undefined" && window.innerWidth < 640 ? 135 : 200);
             const translateZ =
-              -Math.abs(offset) * (typeof window !== "undefined" && window.innerWidth < 640 ? 80 : 110) +
+              -Math.abs(offset) * (typeof window !== "undefined" && window.innerWidth < 640 ? 85 : 120) +
               (isCenter ? 30 : 0);
             const scale = Math.max(0.65, 1 - Math.abs(offset) * 0.16);
             const opacity = Math.max(0.25, 1 - Math.abs(offset) * 0.28);
@@ -152,7 +152,7 @@ export const HeroCategorySlider: React.FC<HeroCategorySliderProps> = ({
                   zIndex,
                   transition: "transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.45s ease",
                 }}
-                className={`absolute top-1/2 w-[145px] sm:w-[195px] h-[200px] sm:h-[250px] rounded-2xl overflow-hidden cursor-pointer shadow-xl border-2 transition-all ${
+                className={`absolute top-1/2 w-[165px] sm:w-[220px] h-[235px] sm:h-[295px] rounded-none overflow-hidden cursor-pointer shadow-xl border-2 transition-all ${
                   isCenter
                     ? "border-neutral-950 ring-4 ring-neutral-950/15 shadow-2xl"
                     : isSelected
@@ -176,7 +176,7 @@ export const HeroCategorySlider: React.FC<HeroCategorySliderProps> = ({
                       : "from-black/85 via-black/40 to-black/20"
                   }`}
                 />
-                <div className="absolute bottom-2.5 inset-x-2 bg-white/95 backdrop-blur-sm py-2 px-2 rounded-xl text-center shadow-md border border-neutral-100">
+                <div className="absolute bottom-2.5 inset-x-2 bg-white/95 backdrop-blur-sm py-2.5 px-2 rounded-none text-center shadow-md border border-neutral-200">
                   <span className="text-xs sm:text-sm font-black text-neutral-950 uppercase tracking-tight block leading-snug break-words font-brand">
                     {lang === "ar" ? cat.nameAr : cat.name}
                   </span>

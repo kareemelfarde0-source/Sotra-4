@@ -139,7 +139,7 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
               <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2.5">
                 {lang === "ar" ? "أقسام الملابس الرجالية" : "Men's Apparel Categories"}
               </h3>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {categories.map((cat, idx) => (
                   <button
                     key={`nav-drawer-cat-${cat.id}-${idx}`}
@@ -147,7 +147,7 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
                       onClose();
                       onSelectCategory(cat.id);
                     }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-neutral-100 text-xs font-extrabold text-neutral-900 transition-colors cursor-pointer group"
+                    className="w-full flex items-center justify-between p-3 rounded-none border border-transparent hover:border-neutral-200 hover:bg-neutral-50 text-xs sm:text-sm font-black text-neutral-900 transition-colors cursor-pointer group"
                   >
                     <span>{lang === "ar" ? cat.nameAr : cat.name}</span>
                     {lang === "ar" ? (
@@ -166,7 +166,7 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
                 <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2.5">
                   {lang === "ar" ? "العروض والتخفيضات المميزة" : "Special Offers"}
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {offerCategories.map((oc, idx) => (
                     <button
                       key={`nav-drawer-oc-${oc.id}-${idx}`}
@@ -174,13 +174,13 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
                         onClose();
                         onSelectOfferCategory(oc.id);
                       }}
-                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-red-50/50 hover:bg-red-50 text-xs font-black text-red-900 border border-red-100 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 rounded-none bg-red-50/50 hover:bg-red-50 text-xs sm:text-sm font-black text-red-900 border border-red-100 transition-colors cursor-pointer"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-red-600" />
+                      <span className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-red-600" />
                         {lang === "ar" ? oc.nameAr : oc.name}
                       </span>
-                      <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold">عروض</span>
+                      <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-none font-bold">عروض</span>
                     </button>
                   ))}
                 </div>

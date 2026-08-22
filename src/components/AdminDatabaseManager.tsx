@@ -24,7 +24,7 @@ import { AdminData, Order } from "../types";
 import {
   wipeEntireStoreDatabase,
   wipeSelectiveStoreCollection,
-  resetDemoDataToFirebase,
+  syncAllStoreDataToFirebase,
   saveAdminData,
   STORAGE_KEYS,
 } from "../utils/storage";
@@ -221,26 +221,18 @@ export const AdminDatabaseManager: React.FC<AdminDatabaseManagerProps> = ({
     }
   };
 
-  // SEED DEMO DATA
-  const handleSeedDemoData = async () => {
-    if (
-      !confirm(
-        "🔄 هل تريد استعادة وتوليد البيانات التجريبية الافتراضية النموذجية (منتجات وأقسام وبانرات وكوبونات) في قاعدة بيانات Firebase والمتجر؟"
-      )
-    ) {
-      return;
-    }
-
-    setSelectiveLoading("demo_seed");
+  // SYNC WITH FIREBASE
+  const handleSyncWithFirebase = async () => {
+    setSelectiveLoading("firebase_sync");
     try {
-      const res = await resetDemoDataToFirebase();
+      const res = await syncAllStoreDataToFirebase(adminData);
       if (res.success) {
-        onUpdateAdminData(res.data);
-        saveAdminData(res.data);
-        showToast("✅ تم استعادة وتوليد البيانات التجريبية في قاعدة البيانات بنجاح!");
+        showToast("✅ تمت المزامنة الكاملة وتحديث البيانات مع Firebase بنجاح!");
+      } else {
+        showToast(`❌ حدث خطأ أثناء المزامنة: ${res.message}`);
       }
     } catch (e: any) {
-      showToast(`❌ فشل توليد البيانات التجريبية: ${e?.message}`);
+      showToast(`❌ فشلت المزامنة: ${e?.message}`);
     } finally {
       setSelectiveLoading(null);
     }
@@ -256,34 +248,34 @@ export const AdminDatabaseManager: React.FC<AdminDatabaseManagerProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-1 bg-red-600/30 text-red-400 border border-red-500/40 rounded-lg text-xs font-black flex items-center gap-1.5 font-mono">
                 <Trash2 className="w-3.5 h-3.5" />
-                DATABASE WIPE & RESET
+                DATABASE WIPE & SYNC
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                قاعدة البيانات: متصلة ونشطة
+                قاعدة البيانات Firebase: متصلة ونشطة
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white">
-              مسح وتفريغ قاعدة البيانات (Database Wipe)
+              إدارة وتفريغ قاعدة البيانات (Firebase Database)
             </h2>
             <p className="text-xs sm:text-sm text-neutral-300 max-w-2xl leading-relaxed">
-              أداة الإدارة الشاملة لتنظيف وتفريغ المتجر من المنتجات التجريبية أو مسح سجلات الطلبات والعملاء بالكامل للبدء بمتجر حقيقي نظيف، مع حماية متقدمة ونسخ احتياطي تلقائي.
+              المتجر متصل مباشرة بقاعدة بيانات Firebase السحابية دون أي بيانات تجريبية وهمية. يمكنك إدارة ومسح أي أقسام أو مزامنة التغييرات فوراً.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleSeedDemoData}
-              disabled={selectiveLoading === "demo_seed" || isWiping}
+              onClick={handleSyncWithFirebase}
+              disabled={selectiveLoading === "firebase_sync" || isWiping}
               className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-              title="توليد واستعادة بيانات تجريبية نموذجية"
+              title="مزامنة وتحديث البيانات مع Firebase السحابية"
             >
-              {selectiveLoading === "demo_seed" ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+              {selectiveLoading === "firebase_sync" ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
               ) : (
-                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <RefreshCw className="w-4 h-4 text-emerald-400" />
               )}
-              <span>استعادة البيانات النموذجية</span>
+              <span>مزامنة مع Firebase</span>
             </button>
           </div>
         </div>

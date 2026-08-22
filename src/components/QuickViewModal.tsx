@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, ShoppingBag, Zap, Eye, Check, AlertTriangle, RefreshCw, ShieldCheck, ZoomIn } from "lucide-react";
+import { X, ShoppingBag, Zap, Eye, Check, AlertTriangle, ZoomIn, ShieldCheck, ArrowRight, ArrowLeft } from "lucide-react";
 import { Product, ColorVariant, DiscountBadgeStyle } from "../types";
 import {
   getVariantStock,
@@ -14,25 +14,27 @@ import {
 import { DiscountBadge } from "./DiscountBadge";
 import { getEffectiveProductDiscount } from "../utils/discount";
 
-interface ProductModalProps {
+interface QuickViewModalProps {
   product: Product | null;
   initialColorIndex?: number;
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (product: Product, selectedColor: ColorVariant, size: string, quantity: number) => void;
   onBuyNow: (product: Product, selectedColor: ColorVariant, size: string, quantity: number) => void;
+  onOpenProductDetail?: (product: Product, colorIndex: number) => void;
   onOpenLightbox?: (images: string[], startIndex: number) => void;
   lang: "ar" | "en";
   globalDiscountStyle?: DiscountBadgeStyle;
 }
 
-export const ProductModal: React.FC<ProductModalProps> = ({
+export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   product,
   initialColorIndex = 0,
   isOpen,
   onClose,
   onAddToCart,
   onBuyNow,
+  onOpenProductDetail,
   onOpenLightbox,
   lang,
   globalDiscountStyle = "vertical_left",
@@ -53,7 +55,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       ];
       const sizesArr = Array.isArray(product.sizes) && product.sizes.length > 0 ? product.sizes : ["S", "M", "L", "XL", "XXL"];
 
-      // Find first in-stock size
       const col = colorsArr[initialColorIndex || 0] || colorsArr[0];
       const inStockSize = sizesArr.find((sz) => getVariantStock(product, col, sz) > 0) || sizesArr[0] || "L";
       setSelectedSize(inStockSize);
@@ -67,7 +68,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   ];
   const safeSizes = Array.isArray(product.sizes) && product.sizes.length > 0 ? product.sizes : ["S", "M", "L", "XL", "XXL"];
 
-  // Filter colors with at least 1 in-stock size if inventory is defined
   const availableColors = safeColors.filter((col) => {
     if (!product.inventory || Object.keys(product.inventory).length === 0) return true;
     return safeSizes.some((sz) => getVariantStock(product, col, sz) > 0);
@@ -75,7 +75,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const validColors = availableColors.length > 0 ? availableColors : safeColors;
   const currentColor = validColors[selectedColorIndex] || validColors[0] || safeColors[0];
 
-  // Available sizes for this color (hides out of stock sizes: "واذا لا يوجد بالمخزن اخفي المقاس او اللون تلقائي")
   const matchedSizes = safeSizes.filter((sz) => getVariantStock(product, currentColor, sz) > 0);
   const availableSizesForColor = matchedSizes.length > 0 ? matchedSizes : (product.inStock !== false ? safeSizes : []);
 
@@ -126,12 +125,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     }
   };
 
-  const calculatedDiscount =
-    product.discountPercent && product.discountPercent > 0
-      ? product.discountPercent
-      : product.originalPrice && product.originalPrice > product.price
-      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-      : null;
+  const handleGoToFullPage = () => {
+    onClose();
+    if (onOpenProductDetail) {
+      onOpenProductDetail(product, selectedColorIndex);
+    }
+  };
 
   const effectiveDiscount = getEffectiveProductDiscount(product, globalDiscountStyle);
   const isDiscountActive = effectiveDiscount.isActive;
@@ -140,22 +139,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div onClick={onClose} className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
+      <div onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" />
 
       <div className="min-h-full flex items-center justify-center p-3 sm:p-6">
-        <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-neutral-200 animate-scale-in text-start">
+        <div className="relative w-full max-w-4xl bg-white rounded-none shadow-2xl overflow-hidden border border-neutral-300 animate-scale-in text-start">
+          {/* Close Button */}
           <button
             onClick={onClose}
-            aria-label="Close product modal"
-            className="absolute top-4 right-4 z-20 p-2 bg-white/90 hover:bg-black hover:text-white rounded-full shadow-md transition-colors cursor-pointer"
+            aria-label="Close modal"
+            className="absolute top-3.5 right-3.5 z-20 p-2 bg-white/95 hover:bg-neutral-950 hover:text-white rounded-none border border-neutral-200 shadow-md transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-12">
             {/* Image Preview Side */}
-            <div className="bg-neutral-100 p-4 sm:p-6 flex flex-col justify-between">
-              <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-neutral-200 shadow-inner group">
+            <div className="md:col-span-6 bg-neutral-100 p-4 sm:p-6 flex flex-col justify-between border-b md:border-b-0 md:border-r border-neutral-200">
+              <div className="relative aspect-[3/4] w-full rounded-none overflow-hidden bg-neutral-200 shadow-inner group">
                 <img
                   src={images[activeImageIndex] || currentColor.image || SOTRA_PRODUCT_PLACEHOLDER}
                   alt={product.title}
@@ -201,6 +201,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   />
                 )}
 
+                {/* Inspect Product Details Button */}
                 <button
                   type="button"
                   onClick={() => handleOpenZoom(activeImageIndex)}
@@ -214,25 +215,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 {product.badge && (product.badge.textAr || product.badge.text) && (
                   <div className="absolute top-3 start-3 z-10 pointer-events-none">
                     <span
-                      className={`inline-block text-xs font-black px-3 py-1 rounded-md shadow-xs uppercase tracking-wider font-brand select-none ${
+                      className={`inline-block text-[11px] font-black px-2.5 py-1 rounded-none shadow-xs uppercase tracking-wider font-brand select-none ${
                         product.badge.type === "new"
                           ? "bg-emerald-600 text-white"
                           : product.badge.type === "discount"
                           ? "bg-red-600 text-white"
                           : product.badge.type === "featured" || product.badge.type === "bestseller"
-                          ? "bg-amber-500 text-neutral-950"
-                          : product.badge.type === "exclusive"
-                          ? "bg-purple-700 text-white"
-                          : product.badge.type === "limited"
-                          ? "bg-rose-700 text-white"
-                          : product.badge.type === "restocked"
-                          ? "bg-blue-600 text-white"
+                          ? "bg-amber-400 text-neutral-950"
                           : "bg-neutral-950 text-white"
                       }`}
-                      style={{
-                        backgroundColor: product.badge.colorBg || undefined,
-                        color: product.badge.colorText || undefined,
-                      }}
                     >
                       {lang === "ar" ? product.badge.textAr || product.badge.text : product.badge.text || product.badge.textAr}
                     </span>
@@ -246,11 +237,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <button
                       key={i}
                       onClick={() => setActiveImageIndex(i)}
-                      className={`w-16 h-20 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                        activeImageIndex === i ? "border-black ring-2 ring-black/20" : "border-neutral-300 opacity-70"
+                      className={`w-14 h-18 rounded-none overflow-hidden border-2 transition-all cursor-pointer ${
+                        activeImageIndex === i ? "border-neutral-950 ring-2 ring-neutral-950/20" : "border-neutral-300 opacity-70"
                       }`}
                     >
-                      <img src={img} alt="thumb" className="w-full h-full object-cover" />
+                      <img src={img} alt="thumb" className="w-full h-full object-cover object-top" />
                     </button>
                   ))}
                 </div>
@@ -258,116 +249,106 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             </div>
 
             {/* Product Details Side */}
-            <div className="p-5 sm:p-8 flex flex-col justify-between space-y-5">
+            <div className="md:col-span-6 p-4 sm:p-7 flex flex-col justify-between space-y-4">
               <div>
-                {/* Above title badge if style selected */}
-                {isDiscountActive && discountStyle === "above_title" && (
-                  <DiscountBadge
-                    discountPercent={effectiveDiscount.percent}
-                    originalPrice={product.originalPrice}
-                    price={product.price}
-                    style="above_title"
-                    lang={lang}
-                    timeRemainingText={timeRemaining}
-                  />
-                )}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-black text-neutral-400 uppercase tracking-widest font-brand">
+                    SOTRA • {lang === "ar" ? product.fitAr : product.fit}
+                  </span>
+                  <button
+                    onClick={handleGoToFullPage}
+                    className="text-xs font-bold text-neutral-600 hover:text-neutral-950 underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{lang === "ar" ? "الصفحة الكاملة للمنتج" : "Full Details"}</span>
+                    {lang === "ar" ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
 
-                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest font-brand">
-                  SOTRA FASHION • {lang === "ar" ? product.fitAr : product.fit}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black uppercase text-neutral-950 font-brand mt-1">
+                <h2 className="text-lg sm:text-xl font-black uppercase text-neutral-950 font-brand mt-1 leading-snug">
                   {lang === "ar" ? product.titleAr : product.title}
                 </h2>
 
                 {/* Price */}
-                <div className="flex items-baseline gap-3 mt-3">
-                  <span className="text-2xl sm:text-3xl font-black text-neutral-950 font-brand">
+                <div className="flex items-baseline gap-3 mt-2.5">
+                  <span className="text-xl sm:text-2xl font-black text-neutral-950 font-brand">
                     LE {Number(product.price || 0).toFixed(2)}
                   </span>
                   {isDiscountActive && product.originalPrice && product.originalPrice > product.price && (
                     <>
-                      <span className="text-base font-semibold text-neutral-400 line-through font-brand">
+                      <span className="text-sm font-semibold text-neutral-400 line-through font-brand">
                         LE {Number(product.originalPrice || 0).toFixed(2)}
                       </span>
-                      <span className="text-xs font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-md font-brand">
+                      <span className="text-xs font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-none font-brand">
                         {lang === "ar"
                           ? `وفر ${Number(product.originalPrice || 0) - Number(product.price || 0)} ج.م`
-                          : `SAVE ${effectiveDiscount.percent}%`}
+                          : `SAVE LE ${Number(product.originalPrice || 0) - Number(product.price || 0)}`}
                       </span>
                     </>
                   )}
                 </div>
 
-                <p className="text-xs sm:text-sm text-neutral-600 mt-3 leading-relaxed">
-                  {lang === "ar" ? product.descriptionAr : product.description}
-                </p>
-
                 {/* Colors */}
-                <div className="mt-5">
+                <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-extrabold text-neutral-800">
-                      {lang === "ar" ? "اللون المحدد:" : "Color:"}{" "}
-                      <span className="text-neutral-500 font-normal">
+                    <span className="text-xs font-bold text-neutral-700">
+                      {lang === "ar" ? "اللون المختار:" : "Color:"}{" "}
+                      <span className="font-extrabold text-neutral-950">
                         {lang === "ar" ? currentColor.nameAr : currentColor.name}
                       </span>
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {validColors.map((col, idx) => (
-                      <button
-                        key={col.name}
-                        onClick={() => handleColorChange(idx)}
-                        className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-transform cursor-pointer ${
-                          selectedColorIndex === idx ? "ring-2 ring-neutral-950 ring-offset-2 scale-110" : "hover:scale-105"
-                        }`}
-                        style={{
-                          backgroundColor: col.hex,
-                          border: col.hex === "#ffffff" ? "1px solid #d1d5db" : "none",
-                        }}
-                      >
-                        {selectedColorIndex === idx && (
-                          <Check
-                            className={`w-4 h-4 ${col.hex === "#ffffff" ? "text-black" : "text-white"}`}
+                  <div className="flex flex-wrap gap-2">
+                    {validColors.map((color, idx) => {
+                      const isSelected = selectedColorIndex === idx;
+                      return (
+                        <button
+                          key={color.name}
+                          onClick={() => handleColorChange(idx)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-neutral-950 bg-neutral-950 text-white shadow-xs"
+                              : "border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400"
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-neutral-300"
+                            style={{ backgroundColor: color.colorCode }}
                           />
-                        )}
-                      </button>
-                    ))}
+                          <span>{lang === "ar" ? color.nameAr : color.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Sizes */}
-                <div className="mt-5">
+                <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-extrabold text-neutral-800">
-                      {lang === "ar" ? "المقاس المتوفر:" : "Available Size:"}
-                    </span>
-                    <span className="text-xs font-bold text-neutral-500">
-                      {lang === "ar" ? "المحدد:" : "Selected:"} <strong className="text-neutral-950 font-brand">{selectedSize}</strong>
+                    <span className="text-xs font-bold text-neutral-700">
+                      {lang === "ar" ? "المقاس:" : "Size:"}{" "}
+                      <span className="font-extrabold text-neutral-950">{selectedSize}</span>
                     </span>
                   </div>
-
                   {safeSizes.length > 0 && !isColorOutOfStock ? (
-                    <div className="grid grid-cols-5 gap-2">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                       {safeSizes.map((sz) => {
+                        const isSelected = selectedSize === sz;
                         const stock = getVariantStock(product, currentColor, sz);
                         const isSingle = isLowStock(stock);
                         const isSizeOut = isOutOfStock(stock);
-                        const isSelected = selectedSize === sz;
 
                         return (
                           <button
                             key={sz}
                             onClick={() => setSelectedSize(sz)}
-                            className={`py-2.5 text-xs font-extrabold rounded-xl border transition-all cursor-pointer relative ${
+                            className={`py-2 text-xs font-black rounded-none border transition-all cursor-pointer text-center relative ${
                               isSelected
                                 ? isSizeOut
-                                  ? "bg-red-50 text-red-700 border-red-600 shadow-md ring-2 ring-red-500/20"
-                                  : "bg-neutral-950 text-white border-neutral-950 shadow-md ring-2 ring-neutral-950/20"
+                                  ? "border-red-600 bg-red-50 text-red-700 shadow-sm"
+                                  : "border-neutral-950 bg-neutral-950 text-white shadow-sm"
                                 : isSizeOut
-                                ? "bg-neutral-100/70 text-neutral-400 border-neutral-200 line-through hover:border-red-300"
-                                : isSingle
-                                ? "bg-amber-50 text-amber-900 border-amber-300 hover:border-amber-500"
-                                : "bg-neutral-50 text-neutral-800 border-neutral-200 hover:border-neutral-400"
+                                ? "border-neutral-200 bg-neutral-100/70 text-neutral-400 line-through hover:border-red-300"
+                                : "border-neutral-300 bg-white text-neutral-900 hover:border-neutral-500"
                             }`}
                           >
                             {sz}
@@ -387,30 +368,30 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     </div>
                   ) : null}
 
-                  {/* Out of Stock Messages */}
+                  {/* Out of Stock Context Message */}
                   {isModelOutOfStock ? (
-                    <p className="mt-2 text-xs text-red-600 font-bold p-2.5 bg-red-50 rounded-xl border border-red-200">
+                    <p className="mt-2 text-xs text-red-600 font-bold p-2 bg-red-50 rounded-none border border-red-200">
                       {lang === "ar" ? "نفدت المقاسات بهذا الموديل" : "Out of stock for this model."}
                     </p>
                   ) : isColorOutOfStock ? (
-                    <p className="mt-2 text-xs text-red-600 font-bold p-2.5 bg-red-50 rounded-xl border border-red-200">
+                    <p className="mt-2 text-xs text-red-600 font-bold p-2 bg-red-50 rounded-none border border-red-200">
                       {lang === "ar" ? "نفدت المقاسات الخاصة بهذا اللون" : "Out of stock for this color."}
                     </p>
                   ) : isSelectedOutOfStock ? (
-                    <p className="mt-2 text-xs text-red-600 font-bold p-2.5 bg-red-50 rounded-xl border border-red-200">
+                    <p className="mt-2 text-xs text-red-600 font-bold p-2 bg-red-50 rounded-none border border-red-200">
                       {lang === "ar" ? "نفدت الكمية الخاصة بهذا المقاس" : "Out of stock for this size."}
                     </p>
                   ) : null}
                 </div>
 
-                {/* LOW STOCK ALERT (قريب النفاذ) */}
+                {/* Low Stock Alert */}
                 {isSelectedLowStock && (
-                  <div className="mt-3 p-2.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl flex items-center gap-2 text-xs font-bold animate-pulse">
+                  <div className="mt-3 p-2 bg-amber-50 border border-amber-300 text-amber-900 rounded-none flex items-center gap-2 text-xs font-bold animate-pulse">
                     <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                     <span>
                       {lang === "ar"
-                        ? "⚠️ تنبيه: قريب النفاذ - متبقي قطعة واحدة فقط في المخزن لهذا المقاس واللون!"
-                        : "⚠️ Low stock: Only 1 piece left in warehouse for this size and color!"}
+                        ? "⚠️ تنبيه: متبقي قطعة واحدة فقط في المخزن لهذا المقاس واللون!"
+                        : "⚠️ Low stock: Only 1 piece left in warehouse!"}
                     </span>
                   </div>
                 )}
@@ -420,7 +401,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <span className="text-xs font-bold text-neutral-700">
                     {lang === "ar" ? "الكمية:" : "Qty:"}
                   </span>
-                  <div className="flex items-center border border-neutral-300 rounded-lg bg-neutral-50 overflow-hidden">
+                  <div className="flex items-center border border-neutral-300 rounded-none bg-neutral-50 overflow-hidden">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       className="px-3 py-1 text-neutral-600 hover:bg-neutral-200 font-bold cursor-pointer"
@@ -442,11 +423,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2 pt-2 border-t border-neutral-200">
+              <div className="space-y-2 pt-3 border-t border-neutral-200">
                 <button
                   onClick={handleDirectBuy}
                   disabled={isSelectedOutOfStock}
-                  className="w-full py-3.5 bg-[#dc2626] hover:bg-[#b91c1c] disabled:bg-neutral-400 disabled:cursor-not-allowed active:scale-[0.99] text-white rounded-xl font-extrabold text-sm tracking-wide uppercase shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer font-brand"
+                  className="w-full py-3 bg-[#dc2626] hover:bg-[#b91c1c] disabled:bg-neutral-400 disabled:cursor-not-allowed active:scale-[0.99] text-white rounded-none font-extrabold text-xs sm:text-sm tracking-wide uppercase shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer font-brand"
                 >
                   <Zap className="w-4 h-4 fill-white" />
                   <span>
@@ -456,7 +437,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <button
                   onClick={handleAdd}
                   disabled={isSelectedOutOfStock}
-                  className="w-full py-3 bg-neutral-950 hover:bg-black disabled:bg-neutral-400 disabled:cursor-not-allowed active:scale-[0.99] text-white rounded-xl font-extrabold text-xs sm:text-sm tracking-wide uppercase transition-all flex items-center justify-center gap-2 cursor-pointer font-brand"
+                  className="w-full py-2.5 bg-neutral-950 hover:bg-black disabled:bg-neutral-400 disabled:cursor-not-allowed active:scale-[0.99] text-white rounded-none font-extrabold text-xs sm:text-sm tracking-wide uppercase transition-all flex items-center justify-center gap-2 cursor-pointer font-brand border border-neutral-950"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>{lang === "ar" ? "إضافة إلى حقيبة التسوق" : "ADD TO BAG"}</span>

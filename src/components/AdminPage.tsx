@@ -59,8 +59,6 @@ import {
 import {
   saveAdminData,
   updateOrderStatus,
-  clearAllDemoDataFromFirebase,
-  resetDemoDataToFirebase,
   saveProductToFirestore,
   deleteProductFromFirestore,
   saveCategoryToFirestore,
@@ -81,10 +79,6 @@ import {
   savePaymentConfigToFirestore,
   saveGovernoratesToFirestore,
   SOTRA_PRODUCT_PLACEHOLDER,
-  DEFAULT_CATEGORIES,
-  DEFAULT_OFFER_CATEGORIES,
-  DEFAULT_PRODUCTS,
-  DEFAULT_BANNERS,
 } from "../utils/storage";
 import { DiscountBadge } from "./DiscountBadge";
 import { getEffectiveProductDiscount, DISCOUNT_BADGE_STYLES_META } from "../utils/discount";
@@ -639,40 +633,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     );
   };
 
-  // CLOUD DATABASE CONTROLS (WIPE DEMO DATA / SEED DEMO DATA)
   const [isFirebaseSyncing, setIsFirebaseSyncing] = useState(false);
-
-  const handleClearDemoData = async () => {
-    if (!confirm("⚠️ هل أنت متأكد من رغبتك في مسح كافة البيانات التجريبية من قاعدة البيانات؟\n\nسيتم إفراغ المنتجات والعروض التجريبية لتتمكن من إضافة منتجاتك الحقيقية من الصفر.")) {
-      return;
-    }
-    setIsFirebaseSyncing(true);
-    const result = await clearAllDemoDataFromFirebase();
-    setIsFirebaseSyncing(false);
-    if (result.success) {
-      onUpdateAdminData(result.data);
-      saveAdminData(result.data);
-      showToast("✅ تم مسح البيانات التجريبية بنجاح من قاعدة البيانات. المتجر جاهز لإضافة منتجاتك الخاصة.");
-    } else {
-      showToast("❌ حدث خطأ أثناء الاتصال بقاعدة البيانات.");
-    }
-  };
-
-  const handleResetDemoData = async () => {
-    if (!confirm("هل تريد استعادة وتوليد البيانات التجريبية الافتراضية في قاعدة البيانات؟")) {
-      return;
-    }
-    setIsFirebaseSyncing(true);
-    const result = await resetDemoDataToFirebase();
-    setIsFirebaseSyncing(false);
-    if (result.success) {
-      onUpdateAdminData(result.data);
-      saveAdminData(result.data);
-      showToast("✅ تمت استعادة وتوليد البيانات التجريبية في قاعدة البيانات بنجاح.");
-    } else {
-      showToast("❌ حدث خطأ أثناء الاتصال بقاعدة البيانات.");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] text-neutral-900 font-arabic text-start pb-20 animate-fade-in">
@@ -763,17 +724,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               title="مسح وتفريغ قاعدة البيانات بالكامل أو بشكل مخصص"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>مسح وتفريغ قاعدة البيانات</span>
-            </button>
-
-            <button
-              onClick={handleResetDemoData}
-              disabled={isFirebaseSyncing}
-              className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-all border border-neutral-700 active:scale-95 disabled:opacity-50"
-              title="استعادة وتوليد البيانات التجريبية في Firebase"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-neutral-400" />
-              <span>استعادة البيانات التجريبية</span>
+              <span>إدارة وتفريغ قاعدة البيانات</span>
             </button>
           </div>
         </div>
@@ -1098,11 +1049,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     <span>تحميل نموذج Excel</span>
                   </button>
                   <button
-                    onClick={handleResetDemoData}
+                    onClick={async () => {
+                      showToast("⏳ جاري مزامنة المنتجات من Firebase...");
+                      const res = await syncAllStoreDataToFirebase(adminData);
+                      if (res.success) {
+                        showToast("✅ تمت المزامنة مع Firebase بنجاح!");
+                      }
+                    }}
                     className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer transition-colors"
                   >
-                    <RotateCcw className="w-4 h-4 text-neutral-500" />
-                    <span>استعادة البيانات التجريبية</span>
+                    <RefreshCw className="w-4 h-4 text-emerald-600" />
+                    <span>مزامنة مع Firebase</span>
                   </button>
                 </div>
               </div>
@@ -1468,20 +1425,56 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         {/* TAB 6: INVENTORY & STOCK MATRIX */}
         {activeTab === "inventory" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-neutral-200 shadow-2xs">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-neutral-200 shadow-2xs">
               <div>
                 <h2 className="text-base font-black text-neutral-900">المخزون والكميات للألوان والمقاسات</h2>
-                <p className="text-xs text-neutral-500">
-                  تحديد كمية كل مقاس ولون بدقة وتحديث هوامش الربح وأسعار الجملة.
+                <p className="text-xs text-neutral-500 mt-1">
+                  تحديد كمية كل مقاس ولون بدقة وتحديث هوامش الربح وأسعار الجملة، مع إمكانية التصدير والاستيراد عبر Excel.
                 </p>
               </div>
-              <input
-                type="search"
-                placeholder="ابحث عن منتج بالمخزن..."
-                value={invSearch}
-                onChange={(e) => setInvSearch(e.target.value)}
-                className="px-3 py-2 text-xs rounded-xl border border-neutral-300 bg-neutral-50 outline-none w-48"
-              />
+              <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
+                <input
+                  type="search"
+                  placeholder="ابحث عن منتج بالمخزن..."
+                  value={invSearch}
+                  onChange={(e) => setInvSearch(e.target.value)}
+                  className="px-3 py-2 text-xs rounded-xl border border-neutral-300 bg-neutral-50 outline-none w-full sm:w-44"
+                />
+                <button
+                  onClick={() => {
+                    if (adminData.products.length === 0) {
+                      showToast("⚠️ لا توجد منتجات لتصديرها حالياً");
+                      return;
+                    }
+                    exportProductsToExcel(adminData.products, adminData.categories);
+                    showToast("✅ تم تصدير شيت Excel مع توزيع كميات المخزون والمقاسات والألوان بنجاح!");
+                  }}
+                  className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs transition-colors"
+                  title="تصدير شيت Excel للمنتجات والمخزون (.xlsx)"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>تصدير Excel</span>
+                </button>
+                <button
+                  onClick={() => prodImportInputRef.current?.click()}
+                  className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs transition-colors"
+                  title="استيراد وتحديث كميات المخزون من ملف Excel (.xlsx)"
+                >
+                  <Upload className="w-4 h-4 text-blue-600" />
+                  <span>استيراد Excel</span>
+                </button>
+                <button
+                  onClick={() => {
+                    exportProductsExcelTemplate();
+                    showToast("✅ تم تحميل نموذج إكسيل جاهز لإدخال كميات المخزون والمقاسات والألوان!");
+                  }}
+                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
+                  title="تحميل نموذج Excel فارغ مع أمثلة للمقاسات والألوان والكميات"
+                >
+                  <Download className="w-3.5 h-3.5 text-neutral-500" />
+                  <span>نموذج Excel</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">

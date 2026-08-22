@@ -41,7 +41,7 @@ export const OfferCategoriesSection: React.FC<OfferCategoriesSectionProps> = ({
 
   const scrollStrip = (direction: "left" | "right") => {
     if (stripRef.current) {
-      const scrollAmount = typeof window !== "undefined" && window.innerWidth < 640 ? 220 : 300;
+      const scrollAmount = typeof window !== "undefined" && window.innerWidth < 640 ? 250 : 340;
       stripRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -52,7 +52,7 @@ export const OfferCategoriesSection: React.FC<OfferCategoriesSectionProps> = ({
   const scrollRow = (catId: string, direction: "left" | "right") => {
     const el = sectionRefs.current[catId];
     if (el) {
-      const scrollAmount = typeof window !== "undefined" && window.innerWidth < 640 ? 190 : 260;
+      const scrollAmount = typeof window !== "undefined" && window.innerWidth < 640 ? 220 : 290;
       el.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -122,7 +122,7 @@ export const OfferCategoriesSection: React.FC<OfferCategoriesSectionProps> = ({
             <button
               key={`offer-strip-item-${cat.id}-${idx}`}
               onClick={() => handleSelectOffer(cat.id)}
-              className="relative flex-shrink-0 w-[145px] sm:w-[195px] h-[200px] sm:h-[250px] rounded-2xl overflow-hidden snap-start cursor-pointer shadow-xl border-2 border-white/80 hover:border-neutral-400 transition-all bg-neutral-900 group"
+              className="relative flex-shrink-0 w-[165px] sm:w-[220px] h-[235px] sm:h-[295px] rounded-none overflow-hidden snap-start cursor-pointer shadow-xl border-2 border-white/80 hover:border-neutral-400 transition-all bg-neutral-900 group"
             >
               <img
                 src={sanitizeImageUrl(cat.image, SOTRA_OFFER_PLACEHOLDER)}
@@ -134,7 +134,7 @@ export const OfferCategoriesSection: React.FC<OfferCategoriesSectionProps> = ({
                 className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
-              <div className="absolute bottom-2.5 inset-x-2 bg-white/95 backdrop-blur-sm py-2 px-2 rounded-xl text-center shadow-md border border-neutral-100">
+              <div className="absolute bottom-2.5 inset-x-2 bg-white/95 backdrop-blur-sm py-2.5 px-2 rounded-none text-center shadow-md border border-neutral-200">
                 <span className="text-xs sm:text-sm font-black text-neutral-950 uppercase tracking-tight block leading-snug break-words font-brand">
                   {lang === "ar" ? cat.nameAr : cat.name}
                 </span>
@@ -180,7 +180,7 @@ export const OfferCategoriesSection: React.FC<OfferCategoriesSectionProps> = ({
               className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth pb-1"
             >
               {catProducts.map((product) => (
-                <div key={product.id} className="flex-shrink-0 w-[145px] sm:w-[195px] snap-start">
+                <div key={product.id} className="flex-shrink-0 w-[165px] sm:w-[210px] snap-start">
                   <ProductCard
                     product={product}
                     onOpenProductModal={onOpenProductModal}

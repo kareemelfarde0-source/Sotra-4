@@ -1,7 +1,17 @@
 import React, { useState } from "react";
-import { ShoppingBag, Eye, AlertTriangle, Zap, Check } from "lucide-react";
+import { ShoppingBag, Eye, AlertTriangle, Zap, Check, ZoomIn } from "lucide-react";
+import { motion } from "motion/react";
 import { Product, ColorVariant, DiscountBadgeStyle } from "../types";
-import { getVariantStock, isLowStock, isOutOfStock, sanitizeImageUrl, SOTRA_PRODUCT_PLACEHOLDER } from "../utils/storage";
+import {
+  getVariantStock,
+  isLowStock,
+  isOutOfStock,
+  isProductModelOutOfStock,
+  isColorVariantOutOfStock,
+  getOutOfStockMessage,
+  sanitizeImageUrl,
+  SOTRA_PRODUCT_PLACEHOLDER,
+} from "../utils/storage";
 import { DiscountBadge } from "./DiscountBadge";
 import { getEffectiveProductDiscount } from "../utils/discount";
 
@@ -10,6 +20,7 @@ interface ProductCardProps {
   onOpenProductModal: (product: Product, selectedColorIndex: number) => void;
   onQuickAdd: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onQuickOrderNow: (product: Product, selectedColor: ColorVariant, size: string) => void;
+  onQuickView?: (product: Product, selectedColorIndex: number) => void;
   onOpenLightbox?: (images: string[], startIndex: number) => void;
   layoutCols: number;
   lang: "ar" | "en";
@@ -21,6 +32,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onOpenProductModal,
   onQuickAdd,
   onQuickOrderNow,
+  onQuickView,
   onOpenLightbox,
   layoutCols,
   lang,
@@ -58,13 +70,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const rawImage = isHovered && currentColor.backImage ? currentColor.backImage : currentColor.image;
   const displayImage = sanitizeImageUrl(rawImage, SOTRA_PRODUCT_PLACEHOLDER);
 
-  // Check overall stock for the current color
+  // Check overall stock for the current color and model
   const totalStockForCurrentColor = safeSizes.reduce(
     (acc, sz) => acc + getVariantStock(product, currentColor, sz),
     0
   );
   const isColorLowStock = totalStockForCurrentColor === 1;
-  const isEntirelyOutOfStock = product.inStock === false || (totalStockForCurrentColor <= 0 && availableSizesForColor.length === 0);
+  const isModelOutOfStock = isProductModelOutOfStock(product);
+  const isColorOutOfStock = isColorVariantOutOfStock(product, currentColor) || (totalStockForCurrentColor <= 0 && availableSizesForColor.length === 0);
+  const isEntirelyOutOfStock = isModelOutOfStock || isColorOutOfStock;
 
   const handleColorClick = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
@@ -94,8 +108,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div
+    <motion.div
       id={`product-card-${product.id}`}
+      initial={{ opacity: 0, y: 22 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       onClick={() => onOpenProductModal(product, selectedColorIndex)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
@@ -121,11 +139,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src = SOTRA_PRODUCT_PLACEHOLDER;
           }}
-          className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+          className={`w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+            isEntirelyOutOfStock ? "grayscale-[35%] opacity-90" : ""
+          }`}
         />
 
+        {/* Out Of Stock Ribbon Stripe Overlay on Image */}
+        {isEntirelyOutOfStock && (
+          <div className="absolute inset-0 z-15 bg-black/40 backdrop-blur-[0.5px] flex items-center justify-center pointer-events-none p-2">
+            <div className="w-[125%] bg-neutral-950/95 py-2 border-y-2 border-red-600 shadow-2xl transform -rotate-12 flex flex-col items-center justify-center">
+              <span className="text-white text-[11px] sm:text-xs font-black uppercase tracking-widest font-brand drop-shadow-md text-center px-2">
+                {isModelOutOfStock
+                  ? lang === "ar"
+                    ? "نفدت المقاسات بهذا الموديل"
+                    : "OUT OF STOCK"
+                  : lang === "ar"
+                  ? "نفدت المقاسات الخاصة بهذا اللون"
+                  : "COLOR OUT OF STOCK"}
+              </span>
+              <span className="text-red-400 text-[9px] font-bold uppercase tracking-wider font-brand">
+                OUT OF STOCK
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Discount Ribbon Badge based on selected style */}
-        {isDiscountActive && discountStyle !== "above_title" && (
+        {isDiscountActive && !isEntirelyOutOfStock && discountStyle !== "above_title" && (
           <DiscountBadge
             discountPercent={effectiveDiscount.percent}
             originalPrice={product.originalPrice}
@@ -138,9 +178,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Badges / Low Stock Alert / Top Badges */}
         <div className="absolute top-2.5 start-2.5 z-10 flex flex-col gap-1.5 items-start max-w-[75%] pointer-events-none">
-          {isEntirelyOutOfStock ? (
+          {isModelOutOfStock ? (
             <span className="inline-block bg-neutral-900/90 backdrop-blur-xs text-white text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-none shadow-xs uppercase tracking-wider font-brand border border-white/20">
-              {lang === "ar" ? "نفدت الكمية" : "OUT OF STOCK"}
+              {lang === "ar" ? "نفدت المقاسات بهذا الموديل" : "OUT OF STOCK"}
+            </span>
+          ) : isColorOutOfStock ? (
+            <span className="inline-block bg-neutral-900/90 backdrop-blur-xs text-white text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-none shadow-xs uppercase tracking-wider font-brand border border-white/20">
+              {lang === "ar" ? "نفدت المقاسات الخاصة بهذا اللون" : "COLOR OUT OF STOCK"}
             </span>
           ) : isColorLowStock ? (
             <span className="inline-flex items-center gap-1 bg-amber-500 text-neutral-950 text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-none shadow-md tracking-wide font-arabic animate-pulse">
@@ -177,27 +221,50 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Quick Actions overlay buttons */}
-        {!isEntirelyOutOfStock && (
-          <button
-            id={`btn-quick-bag-${product.id}`}
-            onClick={handleQuickBagClick}
-            aria-label="Quick add to bag"
-            title={lang === "ar" ? "إضافة سريعة للسلة" : "Quick Add"}
-            className="absolute bottom-2.5 right-2.5 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-none bg-white/95 hover:bg-neutral-950 text-neutral-900 hover:text-white shadow-md flex items-center justify-center transition-all duration-200 active:scale-90 border border-neutral-300 cursor-pointer backdrop-blur-xs"
-          >
-            <ShoppingBag className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
-          </button>
-        )}
+        <div className="absolute bottom-2.5 inset-x-2.5 z-20 flex items-center justify-between pointer-events-auto">
+          {/* Left: Quick View / Fabric Texture Zoom */}
+          <div className="flex items-center gap-1.5">
+            <button
+              id={`btn-quick-view-${product.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onQuickView) {
+                  onQuickView(product, selectedColorIndex);
+                } else {
+                  handleQuickViewClick(e);
+                }
+              }}
+              aria-label={lang === "ar" ? "معاينة وشراء سريع" : "Quick View"}
+              title={lang === "ar" ? "معاينة واختيار المقاس فوراً" : "Quick View"}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-none bg-white/95 hover:bg-neutral-950 text-neutral-900 hover:text-white shadow-md flex items-center justify-center transition-all duration-200 active:scale-90 border border-neutral-300 cursor-pointer backdrop-blur-xs group/btn"
+            >
+              <Eye className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
+            </button>
 
-        <button
-          id={`btn-quick-view-${product.id}`}
-          onClick={handleQuickViewClick}
-          aria-label={lang === "ar" ? "عرض الصور بالكامل وتكبيرها" : "View full images"}
-          title={lang === "ar" ? "عرض وتكبير الصور" : "View Full Images"}
-          className="absolute bottom-2.5 left-2.5 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-none bg-white/95 hover:bg-neutral-950 text-neutral-900 hover:text-white shadow-md flex items-center justify-center transition-all duration-200 active:scale-90 border border-neutral-300 cursor-pointer backdrop-blur-xs"
-        >
-          <Eye className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
-        </button>
+            <button
+              id={`btn-details-zoom-${product.id}`}
+              onClick={handleQuickViewClick}
+              aria-label={lang === "ar" ? "معاينة وتكبير تفاصيل المنتج" : "Inspect product details"}
+              title={lang === "ar" ? "معاينة تفاصيل المنتج (2.5x)" : "Inspect Product Details (2.5x)"}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-none bg-white/95 hover:bg-neutral-950 text-neutral-900 hover:text-white shadow-md flex items-center justify-center transition-all duration-200 active:scale-90 border border-neutral-300 cursor-pointer backdrop-blur-xs group/zoom"
+            >
+              <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-800 group-hover/zoom:text-white stroke-[2.2]" />
+            </button>
+          </div>
+
+          {/* Right: Quick Bag */}
+          {!isEntirelyOutOfStock && (
+            <button
+              id={`btn-quick-bag-${product.id}`}
+              onClick={handleQuickBagClick}
+              aria-label="Quick add to bag"
+              title={lang === "ar" ? "إضافة سريعة للسلة" : "Quick Add"}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-none bg-white/95 hover:bg-neutral-950 text-neutral-900 hover:text-white shadow-md flex items-center justify-center transition-all duration-200 active:scale-90 border border-neutral-300 cursor-pointer backdrop-blur-xs"
+            >
+              <ShoppingBag className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
+            </button>
+          )}
+        </div>
 
         {/* Quick Sizes Selector Popup */}
         {showQuickSizes && availableSizesForColor.length > 0 && (
@@ -322,8 +389,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               })}
             </div>
           ) : (
-            <p className="mt-2.5 text-[11px] font-bold text-red-600">
-              {lang === "ar" ? "نفدت المقاسات لهذا اللون" : "Out of stock for this color"}
+            <p className="mt-2.5 text-[11px] font-black text-red-600">
+              {isModelOutOfStock
+                ? lang === "ar"
+                  ? "نفدت المقاسات بهذا الموديل"
+                  : "Out of stock for this model"
+                : lang === "ar"
+                ? "نفدت المقاسات الخاصة بهذا اللون"
+                : "Out of stock for this color"}
             </p>
           )}
         </div>
@@ -363,6 +436,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

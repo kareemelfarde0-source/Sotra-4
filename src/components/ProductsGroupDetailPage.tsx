@@ -12,6 +12,7 @@ interface ProductsGroupDetailPageProps {
   productIds: string[];
   allProducts: Product[];
   onOpenProductModal: (product: Product, selectedColorIndex: number) => void;
+  onQuickView?: (product: Product, selectedColorIndex: number) => void;
   onQuickAdd: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onQuickOrderNow: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onBackToHome: () => void;
@@ -29,6 +30,7 @@ export const ProductsGroupDetailPage: React.FC<ProductsGroupDetailPageProps> = (
   productIds = [],
   allProducts = [],
   onOpenProductModal,
+  onQuickView,
   onQuickAdd,
   onQuickOrderNow,
   onBackToHome,
@@ -216,6 +218,7 @@ export const ProductsGroupDetailPage: React.FC<ProductsGroupDetailPageProps> = (
                 key={product.id}
                 product={product}
                 onOpenProductModal={() => onOpenProductModal(product, 0)}
+                onQuickView={onQuickView}
                 onQuickAdd={onQuickAdd}
                 onQuickOrderNow={onQuickOrderNow}
                 onOpenLightbox={onOpenLightbox}

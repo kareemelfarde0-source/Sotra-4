@@ -171,6 +171,18 @@ export const db: Firestore = (() => {
 })();
 export const auth = getAuth(app);
 
+// Validate connection to Firestore on initial boot
+export async function testConnection(): Promise<void> {
+  try {
+    await getDocFromServer(doc(db, "test", "connection"));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("the client is offline")) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+}
+testConnection();
+
 // Error Handling Definition matching Firebase Skill specifications
 export enum OperationType {
   CREATE = "create",

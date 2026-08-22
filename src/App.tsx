@@ -23,6 +23,7 @@ import { AdminPasswordModal } from "./components/AdminPasswordModal";
 import { NavigationMenuDrawer } from "./components/NavigationMenuDrawer";
 import { ImageLightbox } from "./components/ImageLightbox";
 import { PromotionalPopupModal } from "./components/PromotionalPopupModal";
+import { QuickViewModal } from "./components/QuickViewModal";
 import { Footer } from "./components/Footer";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { SplashScreen } from "./components/SplashScreen";
@@ -110,6 +111,7 @@ export default function App() {
   // --- Modals State ---
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [activeProductModal, setActiveProductModal] = useState<{ product: Product; selectedColorIndex: number } | null>(null);
+  const [quickViewProduct, setQuickViewProduct] = useState<{ product: Product; selectedColorIndex: number } | null>(null);
   const [isFastCheckoutOpen, setIsFastCheckoutOpen] = useState(false);
   const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
@@ -589,6 +591,7 @@ export default function App() {
                         key={product.id}
                         product={product}
                         onOpenProductModal={() => handleOpenProductDetail(product)}
+                        onQuickView={(p, colIdx) => setQuickViewProduct({ product: p, selectedColorIndex: colIdx })}
                         onQuickAdd={handleAddToCart}
                         onQuickOrderNow={handleQuickOrderNow}
                         onOpenLightbox={handleOpenLightbox}
@@ -617,6 +620,7 @@ export default function App() {
               products={adminData.products}
               onSelectCategory={(catId) => setSelectedCategoryId(catId)}
               onOpenProductModal={(p) => handleOpenProductDetail(p)}
+              onQuickView={(p, colIdx) => setQuickViewProduct({ product: p, selectedColorIndex: colIdx })}
               onQuickAdd={handleAddToCart}
               onQuickOrderNow={handleQuickOrderNow}
               onBackToHome={() => setCurrentView("home")}
@@ -636,6 +640,7 @@ export default function App() {
               products={adminData.products}
               onSelectOfferCategory={(catId) => setSelectedOfferCategoryId(catId)}
               onOpenProductModal={(p) => handleOpenProductDetail(p)}
+              onQuickView={(p, colIdx) => setQuickViewProduct({ product: p, selectedColorIndex: colIdx })}
               onQuickAdd={handleAddToCart}
               onQuickOrderNow={handleQuickOrderNow}
               onBackToHome={() => setCurrentView("home")}
@@ -653,6 +658,7 @@ export default function App() {
               productIds={selectedProductsGroup.productIds}
               allProducts={adminData.products}
               onOpenProductModal={(p) => handleOpenProductDetail(p)}
+              onQuickView={(p, colIdx) => setQuickViewProduct({ product: p, selectedColorIndex: colIdx })}
               onQuickAdd={handleAddToCart}
               onQuickOrderNow={handleQuickOrderNow}
               onBackToHome={() => setCurrentView("home")}
@@ -723,6 +729,7 @@ export default function App() {
             <SearchPage
               products={adminData.products}
               onOpenProductModal={(p) => handleOpenProductDetail(p)}
+              onQuickView={(p, colIdx) => setQuickViewProduct({ product: p, selectedColorIndex: colIdx })}
               onQuickAdd={handleAddToCart}
               onQuickOrderNow={handleQuickOrderNow}
               onOpenLightbox={handleOpenLightbox}
@@ -790,7 +797,7 @@ export default function App() {
 
       {/* MODALS & DRAWERS */}
 
-      {/* 1. Product Quick View & Order Modal (if used) */}
+      {/* 1. Full Product Modal (if used) */}
       {activeProductModal && (
         <ProductModal
           isOpen={true}
@@ -801,6 +808,25 @@ export default function App() {
           onBuyNow={handleQuickOrderNow}
           onOpenLightbox={handleOpenLightbox}
           lang={lang}
+        />
+      )}
+
+      {/* 1.1 Fast Quick View Modal */}
+      {quickViewProduct && (
+        <QuickViewModal
+          isOpen={true}
+          onClose={() => setQuickViewProduct(null)}
+          product={quickViewProduct.product}
+          initialColorIndex={quickViewProduct.selectedColorIndex}
+          onAddToCart={handleAddToCart}
+          onBuyNow={handleQuickOrderNow}
+          onOpenProductDetail={(prod, colIdx) => {
+            setQuickViewProduct(null);
+            handleOpenProductDetail(prod);
+          }}
+          onOpenLightbox={handleOpenLightbox}
+          lang={lang}
+          globalDiscountStyle={adminData.discountBadgeStyle}
         />
       )}
 

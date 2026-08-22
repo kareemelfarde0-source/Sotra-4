@@ -248,13 +248,13 @@ export const OfferShowcaseSlider: React.FC<OfferShowcaseSliderProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
           <button
             onClick={() => setSelectedOfferTab("all")}
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+            className={`flex-shrink-0 px-4 py-2 rounded-none text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 border font-brand ${
               selectedOfferTab === "all"
                 ? "bg-white text-neutral-950 border-2 border-neutral-950 font-black shadow-xs ring-1 ring-neutral-950/10"
                 : "bg-white text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 border-neutral-200"
             }`}
           >
-            <Sparkles className={`w-3 h-3 ${selectedOfferTab === "all" ? "text-neutral-950" : "text-neutral-400"}`} />
+            <Sparkles className={`w-3.5 h-3.5 ${selectedOfferTab === "all" ? "text-neutral-950" : "text-neutral-400"}`} />
             <span>{lang === "ar" ? "كل العروض" : "All Deals"}</span>
           </button>
 
@@ -269,7 +269,7 @@ export const OfferShowcaseSlider: React.FC<OfferShowcaseSliderProps> = ({
               <button
                 key={offerCat.id}
                 onClick={() => setSelectedOfferTab(offerCat.id)}
-                className={`flex-shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 border ${
+                className={`flex-shrink-0 px-4 py-2 rounded-none text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 border font-brand ${
                   isSelected
                     ? "bg-white text-neutral-950 border-2 border-neutral-950 font-black shadow-xs ring-1 ring-neutral-950/10"
                     : "bg-white text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 border-neutral-200"
@@ -278,7 +278,7 @@ export const OfferShowcaseSlider: React.FC<OfferShowcaseSliderProps> = ({
                 <span>{lang === "ar" ? offerCat.nameAr : offerCat.name}</span>
                 {catProdCount > 0 && (
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded-none font-bold ${
                       isSelected ? "bg-neutral-200 text-neutral-950 font-black" : "bg-neutral-100 text-neutral-600"
                     }`}
                   >

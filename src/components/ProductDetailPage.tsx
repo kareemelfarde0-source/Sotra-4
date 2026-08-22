@@ -11,9 +11,19 @@ import {
   AlertTriangle,
   Ruler,
   Check,
+  ZoomIn,
 } from "lucide-react";
 import { Product, ColorVariant, DiscountBadgeStyle } from "../types";
-import { getVariantStock, isLowStock, isOutOfStock, sanitizeImageUrl, SOTRA_PRODUCT_PLACEHOLDER } from "../utils/storage";
+import {
+  getVariantStock,
+  isLowStock,
+  isOutOfStock,
+  isProductModelOutOfStock,
+  isColorVariantOutOfStock,
+  getOutOfStockMessage,
+  sanitizeImageUrl,
+  SOTRA_PRODUCT_PLACEHOLDER,
+} from "../utils/storage";
 import { DiscountBadge } from "./DiscountBadge";
 import { getEffectiveProductDiscount } from "../utils/discount";
 
@@ -68,9 +78,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const matchedSizes = safeSizes.filter((sz) => getVariantStock(product, currentColor, sz) > 0);
   const availableSizesForColor = matchedSizes.length > 0 ? matchedSizes : (product.inStock !== false ? safeSizes : []);
 
+  const isModelOutOfStock = isProductModelOutOfStock(product);
+  const isColorOutOfStock = isColorVariantOutOfStock(product, currentColor) || (availableSizesForColor.length === 0);
+
   const currentStock = getVariantStock(product, currentColor, selectedSize);
   const isSelectedLowStock = isLowStock(currentStock);
-  const isSelectedOutOfStock = product.inStock === false || isOutOfStock(currentStock);
+  const isSelectedOutOfStock = isModelOutOfStock || isColorOutOfStock || isOutOfStock(currentStock);
 
   const images = [
     sanitizeImageUrl(currentColor.image, SOTRA_PRODUCT_PLACEHOLDER),
@@ -186,11 +199,33 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   (e.currentTarget as HTMLImageElement).src = SOTRA_PRODUCT_PLACEHOLDER;
                 }}
                 onClick={() => handleOpenZoom(selectedImageIndex)}
-                className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105 cursor-zoom-in"
+                className={`w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105 cursor-zoom-in ${
+                  isModelOutOfStock || isColorOutOfStock ? "grayscale-[35%] opacity-90" : ""
+                }`}
               />
 
+              {/* Out Of Stock Ribbon Stripe Overlay on Image */}
+              {(isModelOutOfStock || isColorOutOfStock) && (
+                <div className="absolute inset-0 z-15 bg-black/40 backdrop-blur-[0.5px] flex items-center justify-center pointer-events-none p-2">
+                  <div className="w-[125%] bg-neutral-950/95 py-3 border-y-2 border-red-600 shadow-2xl transform -rotate-12 flex flex-col items-center justify-center">
+                    <span className="text-white text-sm sm:text-base font-black uppercase tracking-widest font-brand drop-shadow-md text-center px-4">
+                      {isModelOutOfStock
+                        ? lang === "ar"
+                          ? "نفدت المقاسات بهذا الموديل"
+                          : "OUT OF STOCK"
+                        : lang === "ar"
+                        ? "نفدت المقاسات الخاصة بهذا اللون"
+                        : "COLOR OUT OF STOCK"}
+                    </span>
+                    <span className="text-red-400 text-xs font-bold uppercase tracking-wider font-brand">
+                      OUT OF STOCK
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Discount Badge on Image */}
-              {isDiscountActive && discountStyle !== "above_title" && (
+              {isDiscountActive && !isModelOutOfStock && !isColorOutOfStock && discountStyle !== "above_title" && (
                 <DiscountBadge
                   discountPercent={effectiveDiscount.percent}
                   originalPrice={product.originalPrice}
@@ -204,11 +239,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleOpenZoom(selectedImageIndex)}
-                className="sotra-zoom-badge cursor-pointer"
-                style={{ bottom: "14px", insetInlineEnd: "14px" }}
-                title={lang === "ar" ? "تكبير وعرض الصور" : "Zoom images"}
+                className="absolute bottom-3.5 inset-inline-end-3.5 z-10 px-3 py-2 bg-white/95 hover:bg-neutral-950 text-neutral-950 hover:text-white border border-neutral-300 rounded-none shadow-lg text-xs font-black flex items-center gap-2 transition-all cursor-pointer font-brand backdrop-blur-xs group/btn"
+                title={lang === "ar" ? "معاينة تفاصيل المنتج وتكبير الصور بدقة فائقة" : "Inspect product details & zoom"}
               >
-                <Eye className="w-4 h-4 text-neutral-900" />
+                <ZoomIn className="w-4 h-4 text-neutral-800 group-hover/btn:text-white stroke-[2.2]" />
+                <span>{lang === "ar" ? "معاينة تفاصيل المنتج (2.5x)" : "Inspect Details (2.5x)"}</span>
               </button>
 
               {product.badge && (product.badge.textAr || product.badge.text) && (
@@ -336,21 +371,30 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   <span className="text-xs font-black text-neutral-900 uppercase">
                     {lang === "ar" ? "اختر المقاس المتاح:" : "Select Size:"}
                   </span>
+                  <span className="text-xs font-bold text-neutral-600">
+                    {lang === "ar" ? "المحدد:" : "Selected:"} <strong className="text-neutral-950 font-brand">{selectedSize}</strong>
+                  </span>
                 </div>
 
-                {availableSizesForColor.length > 0 ? (
+                {safeSizes.length > 0 && !isColorOutOfStock ? (
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                    {availableSizesForColor.map((sz) => {
+                    {safeSizes.map((sz) => {
                       const stock = getVariantStock(product, currentColor, sz);
                       const isSingle = isLowStock(stock);
+                      const isSizeOut = isOutOfStock(stock);
                       const isSelected = sz === selectedSize;
+
                       return (
                         <button
                           key={sz}
                           onClick={() => setSelectedSize(sz)}
                           className={`py-2.5 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-center cursor-pointer ${
                             isSelected
-                              ? "bg-neutral-950 text-white border-neutral-950 shadow-md ring-2 ring-neutral-950/20"
+                              ? isSizeOut
+                                ? "bg-red-50 text-red-700 border-red-600 shadow-md ring-2 ring-red-500/20"
+                                : "bg-neutral-950 text-white border-neutral-950 shadow-md ring-2 ring-neutral-950/20"
+                              : isSizeOut
+                              ? "bg-neutral-100/70 text-neutral-400 border-neutral-200 line-through hover:border-red-300"
                               : isSingle
                               ? "bg-amber-50 text-amber-900 border-amber-300 hover:border-amber-500"
                               : "bg-white text-neutral-900 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
@@ -362,15 +406,31 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                               {lang === "ar" ? "آخر قطعة" : "1 left"}
                             </span>
                           )}
+                          {isSizeOut && (
+                            <span className="block text-[8px] text-red-500 font-bold no-underline -mt-0.5">
+                              {lang === "ar" ? "نفد" : "Out"}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
-                ) : (
-                  <p className="text-xs text-red-600 font-bold p-2 bg-red-50 rounded-lg">
-                    {lang === "ar" ? "نفدت المقاسات لهذا اللون حالياً." : "Out of stock for this color."}
+                ) : null}
+
+                {/* Out of Stock Context Messages */}
+                {isModelOutOfStock ? (
+                  <p className="mt-3 text-xs text-red-600 font-bold p-3 bg-red-50 rounded-xl border border-red-200">
+                    {lang === "ar" ? "نفدت المقاسات بهذا الموديل" : "Out of stock for this model."}
                   </p>
-                )}
+                ) : isColorOutOfStock ? (
+                  <p className="mt-3 text-xs text-red-600 font-bold p-3 bg-red-50 rounded-xl border border-red-200">
+                    {lang === "ar" ? "نفدت المقاسات الخاصة بهذا اللون" : "Out of stock for this color."}
+                  </p>
+                ) : isSelectedOutOfStock ? (
+                  <p className="mt-3 text-xs text-red-600 font-bold p-3 bg-red-50 rounded-xl border border-red-200">
+                    {lang === "ar" ? "نفدت الكمية الخاصة بهذا المقاس" : "Out of stock for this size."}
+                  </p>
+                ) : null}
               </div>
 
               {/* Low Stock Warning */}

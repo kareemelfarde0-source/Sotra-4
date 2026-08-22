@@ -10,6 +10,7 @@ interface OfferCategoryDetailPageProps {
   products: Product[];
   onSelectOfferCategory: (catId: string) => void;
   onOpenProductModal: (product: Product, selectedColorIndex: number) => void;
+  onQuickView?: (product: Product, selectedColorIndex: number) => void;
   onQuickAdd: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onQuickOrderNow: (product: Product, selectedColor: ColorVariant, size: string) => void;
   onBackToHome: () => void;
@@ -24,6 +25,7 @@ export const OfferCategoryDetailPage: React.FC<OfferCategoryDetailPageProps> = (
   products,
   onSelectOfferCategory,
   onOpenProductModal,
+  onQuickView,
   onQuickAdd,
   onQuickOrderNow,
   onBackToHome,
@@ -75,18 +77,18 @@ export const OfferCategoryDetailPage: React.FC<OfferCategoryDetailPageProps> = (
       </div>
 
       {/* Offer Categories Pills Strip */}
-      <div className="bg-white border-b border-neutral-200 py-2.5 px-3 sm:px-6">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="bg-white border-b border-neutral-200 py-3 px-3 sm:px-6">
+        <div className="max-w-7xl mx-auto flex items-center gap-2.5 overflow-x-auto no-scrollbar">
           {(allOfferCategories || []).map((cat) => {
             const isSelected = cat.id === offerCategory?.id;
             return (
               <button
                 key={cat.id}
                 onClick={() => onSelectOfferCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase whitespace-nowrap transition-all font-brand cursor-pointer ${
+                className={`px-4 py-2 rounded-none text-xs sm:text-sm font-black uppercase whitespace-nowrap transition-all font-brand cursor-pointer border ${
                   isSelected
-                    ? "bg-neutral-950 text-white shadow-xs"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-black"
+                    ? "bg-neutral-950 text-white border-neutral-950 shadow-xs"
+                    : "bg-neutral-100 text-neutral-700 border-neutral-200 hover:bg-neutral-200 hover:text-black"
                 }`}
               >
                 {lang === "ar" ? cat.nameAr : cat.name}
@@ -205,6 +207,7 @@ export const OfferCategoryDetailPage: React.FC<OfferCategoryDetailPageProps> = (
                 key={product.id}
                 product={product}
                 onOpenProductModal={onOpenProductModal}
+                onQuickView={onQuickView}
                 onQuickAdd={onQuickAdd}
                 onQuickOrderNow={onQuickOrderNow}
                 onOpenLightbox={onOpenLightbox}

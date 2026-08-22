@@ -143,15 +143,17 @@ export function exportFullBackupJSON(adminData: AdminData, orders: Order[] = [])
 }
 
 /**
- * Export Products to Microsoft Excel (.xlsx)
+ * Export Products to Microsoft Excel (.xlsx) with both Product Catalog and Variant Stock Matrix sheets
  */
 export function exportProductsToExcel(products: Product[], categories: Category[] = []) {
   const catMap = new Map<string, string>();
   categories.forEach((c) => catMap.set(c.id, c.nameAr || c.name));
 
-  const excelRows = products.map((p) => {
+  // Sheet 1: Main Product Catalog Rows
+  const catalogRows = products.map((p) => {
     const catName = catMap.get(p.category) || p.category || "";
-    // Serialize colors in a clean editable format: "ColorName:Hex:ImageUrl"
+
+    // Serialize colors: "Name:Hex:ImageUrl"
     const colorFormatted = (p.colors || [])
       .map((c) => {
         const name = c.nameAr || c.name || "لون";
@@ -164,6 +166,38 @@ export function exportProductsToExcel(products: Product[], categories: Category[
     const sizesFormatted = (p.sizes || []).join(", ");
     const mainImg = p.colors?.[0]?.image || "";
 
+    // Build inventory breakdown string: "Color:Size:Qty"
+    const safeColors = p.colors && p.colors.length > 0
+      ? p.colors
+      : [{ name: "Default", nameAr: "افتراضي", hex: "#111111", image: "" }];
+    const safeSizes = p.sizes && p.sizes.length > 0 ? p.sizes : ["L"];
+
+    const variantInvParts: string[] = [];
+    let totalStockQty = 0;
+
+    safeColors.forEach((col) => {
+      const colName = col.nameAr || col.name || "افتراضي";
+      safeSizes.forEach((sz) => {
+        const kPrimary = `${col.nameAr || col.name || "default"}_${sz || "L"}`;
+        const kEng = col.name ? `${col.name.trim()}__${sz.trim()}` : "";
+        const kAr = col.nameAr ? `${col.nameAr.trim()}__${sz.trim()}` : "";
+
+        let qty = 10;
+        if (p.inventory && p.inventory[kPrimary] && typeof p.inventory[kPrimary].qty === "number") {
+          qty = p.inventory[kPrimary].qty;
+        } else if (p.inventory && kEng && p.inventory[kEng] && typeof p.inventory[kEng].qty === "number") {
+          qty = p.inventory[kEng].qty;
+        } else if (p.inventory && kAr && p.inventory[kAr] && typeof p.inventory[kAr].qty === "number") {
+          qty = p.inventory[kAr].qty;
+        } else if (p.inStock === false) {
+          qty = 0;
+        }
+
+        totalStockQty += qty;
+        variantInvParts.push(`${colName}:${sz}:${qty}`);
+      });
+    });
+
     return {
       "المعرف (ID)": p.id,
       "اسم المنتج بالعربية": p.titleAr || p.title,
@@ -171,25 +205,79 @@ export function exportProductsToExcel(products: Product[], categories: Category[
       "القسم الرئيسي": catName,
       "قسم العروض": p.offerCategory || "",
       "سعر البيع (ج.م)": Number(p.price) || 0,
-      "سعر الجملة (ج.م)": p.wholesalePrice ? Number(p.wholesalePrice) : "",
+      "سعر الجملة (ج.م)": p.wholesalePrice !== undefined && p.wholesalePrice !== null ? Number(p.wholesalePrice) : "",
       "السعر قبل الخصم (ج.م)": p.originalPrice ? Number(p.originalPrice) : "",
       "نسبة الخصم %": p.discountPercent ? Number(p.discountPercent) : "",
       "الخامة": p.fabricAr || p.fabric || "",
       "القصة والموديل": p.fitAr || p.fit || "أوفر سايز",
       "متوفر بالمخزون": p.inStock ? "نعم" : "لا",
+      "إجمالي كمية المخزون": totalStockQty,
       "المقاسات (مفصولة بفاصلة)": sizesFormatted,
       "الألوان (الاسم:كود_اللون:رابط_الصورة)": colorFormatted,
+      "توزيع كميات المخزون (اللون:المقاس:العدد)": variantInvParts.join(" | "),
       "رابط الصورة الرئيسية": mainImg,
       "الشارة المميزة": p.badge?.textAr || p.badge?.text || "",
       "وصف المنتج": p.descriptionAr || p.description || "",
     };
   });
 
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(excelRows);
+  // Sheet 2: Matrix of individual variants (1 row per Color + Size combination)
+  const variantRows: any[] = [];
+  products.forEach((p) => {
+    const catName = catMap.get(p.category) || p.category || "";
+    const safeColors = p.colors && p.colors.length > 0
+      ? p.colors
+      : [{ name: "Default", nameAr: "افتراضي", hex: "#111111", image: "" }];
+    const safeSizes = p.sizes && p.sizes.length > 0 ? p.sizes : ["L"];
 
-  // Set column widths for optimal reading in Excel
-  ws["!cols"] = [
+    safeColors.forEach((col) => {
+      const colName = col.nameAr || col.name || "افتراضي";
+      safeSizes.forEach((sz) => {
+        const kPrimary = `${col.nameAr || col.name || "default"}_${sz || "L"}`;
+        const kEng = col.name ? `${col.name.trim()}__${sz.trim()}` : "";
+        const kAr = col.nameAr ? `${col.nameAr.trim()}__${sz.trim()}` : "";
+
+        let qty = 10;
+        let wholesalePrice = Number(p.wholesalePrice) || 0;
+        let salePrice = Number(p.price) || 0;
+
+        if (p.inventory && p.inventory[kPrimary]) {
+          qty = typeof p.inventory[kPrimary].qty === "number" ? p.inventory[kPrimary].qty : 10;
+          if (p.inventory[kPrimary].wholesalePrice !== undefined) wholesalePrice = Number(p.inventory[kPrimary].wholesalePrice);
+          if (p.inventory[kPrimary].salePrice !== undefined) salePrice = Number(p.inventory[kPrimary].salePrice);
+        } else if (p.inventory && kEng && p.inventory[kEng]) {
+          qty = typeof p.inventory[kEng].qty === "number" ? p.inventory[kEng].qty : 10;
+          if (p.inventory[kEng].wholesalePrice !== undefined) wholesalePrice = Number(p.inventory[kEng].wholesalePrice);
+          if (p.inventory[kEng].salePrice !== undefined) salePrice = Number(p.inventory[kEng].salePrice);
+        } else if (p.inventory && kAr && p.inventory[kAr]) {
+          qty = typeof p.inventory[kAr].qty === "number" ? p.inventory[kAr].qty : 10;
+          if (p.inventory[kAr].wholesalePrice !== undefined) wholesalePrice = Number(p.inventory[kAr].wholesalePrice);
+          if (p.inventory[kAr].salePrice !== undefined) salePrice = Number(p.inventory[kAr].salePrice);
+        } else if (p.inStock === false) {
+          qty = 0;
+        }
+
+        variantRows.push({
+          "معرف المنتج (Product ID)": p.id,
+          "اسم المنتج بالعربية": p.titleAr || p.title,
+          "القسم الرئيسي": catName,
+          "اللون": colName,
+          "كود اللون (Hex)": col.hex || "#111111",
+          "رابط صورة اللون": col.image || "",
+          "المقاس": sz,
+          "الكمية المتوفرة (العدد)": qty,
+          "سعر البيع (ج.م)": salePrice,
+          "سعر التكلفة (ج.م)": wholesalePrice > 0 ? wholesalePrice : "",
+        });
+      });
+    });
+  });
+
+  const wb = XLSX.utils.book_new();
+
+  // 1. Append Products Catalog Sheet
+  const wsCatalog = XLSX.utils.json_to_sheet(catalogRows);
+  wsCatalog["!cols"] = [
     { wch: 22 }, // ID
     { wch: 30 }, // Title AR
     { wch: 25 }, // Title EN
@@ -202,21 +290,38 @@ export function exportProductsToExcel(products: Product[], categories: Category[
     { wch: 20 }, // Fabric
     { wch: 16 }, // Fit
     { wch: 15 }, // InStock
+    { wch: 18 }, // Total Stock Qty
     { wch: 22 }, // Sizes
     { wch: 40 }, // Colors
+    { wch: 45 }, // Variant inventory string
     { wch: 35 }, // Image
     { wch: 16 }, // Badge
     { wch: 45 }, // Description
   ];
+  XLSX.utils.book_append_sheet(wb, wsCatalog, "منتجات_المتجر");
 
-  XLSX.utils.book_append_sheet(wb, ws, "منتجات_سترة");
+  // 2. Append Detailed Variant Stock Matrix Sheet
+  const wsVariants = XLSX.utils.json_to_sheet(variantRows);
+  wsVariants["!cols"] = [
+    { wch: 22 }, // Product ID
+    { wch: 28 }, // Title AR
+    { wch: 18 }, // Category
+    { wch: 18 }, // Color
+    { wch: 16 }, // Hex
+    { wch: 35 }, // Image URL
+    { wch: 12 }, // Size
+    { wch: 20 }, // Stock Qty
+    { wch: 16 }, // Sale Price
+    { wch: 16 }, // Cost
+  ];
+  XLSX.utils.book_append_sheet(wb, wsVariants, "مخزون_المقاسات_والألوان");
 
   const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([excelBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const dateStr = new Date().toISOString().split("T")[0];
-  downloadBlob(blob, `sotra_products_${dateStr}.xlsx`);
+  downloadBlob(blob, `sotra_products_inventory_${dateStr}.xlsx`);
 }
 
 /**
@@ -274,10 +379,10 @@ export function exportOrdersToExcel(orders: Order[]) {
 }
 
 /**
- * Download a starter Excel Template (.xlsx) for adding new products easily
+ * Download a starter Excel Template (.xlsx) for adding new products and stock quantities per color and size
  */
 export function exportProductsExcelTemplate() {
-  const sampleRows = [
+  const sampleCatalogRows = [
     {
       "المعرف (ID)": "sotra-prod-sample-1",
       "اسم المنتج بالعربية": "قميص كتان ملكي أوفر سايز",
@@ -291,8 +396,10 @@ export function exportProductsExcelTemplate() {
       "الخامة": "كتان تركي 100% فاخر",
       "القصة والموديل": "أوفر سايز مريح",
       "متوفر بالمخزون": "نعم",
-      "المقاسات (مفصولة بفاصلة)": "M, L, XL, XXL",
+      "إجمالي كمية المخزون": 70,
+      "المقاسات (مفصولة بفاصلة)": "M, L, XL, 2XL",
       "الألوان (الاسم:كود_اللون:رابط_الصورة)": "أبيض:#ffffff:https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=900&auto=format&fit=crop&q=80 | أسود:#111111:https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=900&auto=format&fit=crop&q=80",
+      "توزيع كميات المخزون (اللون:المقاس:العدد)": "أبيض:M:10 | أبيض:L:15 | أبيض:XL:10 | أبيض:2XL:5 | أسود:M:8 | أسود:L:12 | أسود:XL:7 | أسود:2XL:3",
       "رابط الصورة الرئيسية": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=900&auto=format&fit=crop&q=80",
       "الشارة المميزة": "جديد",
       "وصف المنتج": "قميص صيفي أنيق ومميز مصنوع من أجود خيوط الكتان الطبيعي بأعلى مواصفات التشطيب والتقفيل.",
@@ -310,17 +417,71 @@ export function exportProductsExcelTemplate() {
       "الخامة": "جبردين قطني معالج",
       "القصة والموديل": "ستريت فيت",
       "متوفر بالمخزون": "نعم",
+      "إجمالي كمية المخزون": 45,
       "المقاسات (مفصولة بفاصلة)": "30, 32, 34, 36, 38",
-      "الألوان (الاسم:كود_اللون:رابط_الصورة)": "بيج:#d2b48c: | زيتي:#556b2f: | كحلي:#000080:",
+      "الألوان (الاسم:كود_اللون:رابط_الصورة)": "بيج:#d2b48c:https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=900&auto=format&fit=crop&q=80 | زيتي:#556b2f: | كحلي:#000080:",
+      "توزيع كميات المخزون (اللون:المقاس:العدد)": "بيج:30:5 | بيج:32:5 | بيج:34:5 | زيتي:32:10 | زيتي:34:10 | كحلي:34:10",
       "رابط الصورة الرئيسية": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=900&auto=format&fit=crop&q=80",
       "الشارة المميزة": "الأكثر مبيعاً",
       "وصف المنتج": "بنطلون كارجو متعدد الجيوب بجودة استثنائية وألوان ثابتة ومريحة طوال اليوم.",
     },
   ];
 
+  const sampleVariantRows = [
+    {
+      "معرف المنتج (Product ID)": "sotra-prod-sample-1",
+      "اسم المنتج بالعربية": "قميص كتان ملكي أوفر سايز",
+      "القسم الرئيسي": "shirts",
+      "اللون": "أبيض",
+      "كود اللون (Hex)": "#ffffff",
+      "رابط صورة اللون": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=900&auto=format&fit=crop&q=80",
+      "المقاس": "M",
+      "الكمية المتوفرة (العدد)": 10,
+      "سعر البيع (ج.م)": 650,
+      "سعر التكلفة (ج.م)": 380,
+    },
+    {
+      "معرف المنتج (Product ID)": "sotra-prod-sample-1",
+      "اسم المنتج بالعربية": "قميص كتان ملكي أوفر سايز",
+      "القسم الرئيسي": "shirts",
+      "اللون": "أبيض",
+      "كود اللون (Hex)": "#ffffff",
+      "رابط صورة اللون": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=900&auto=format&fit=crop&q=80",
+      "المقاس": "L",
+      "الكمية المتوفرة (العدد)": 15,
+      "سعر البيع (ج.م)": 650,
+      "سعر التكلفة (ج.م)": 380,
+    },
+    {
+      "معرف المنتج (Product ID)": "sotra-prod-sample-1",
+      "اسم المنتج بالعربية": "قميص كتان ملكي أوفر سايز",
+      "القسم الرئيسي": "shirts",
+      "اللون": "أسود",
+      "كود اللون (Hex)": "#111111",
+      "رابط صورة اللون": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=900&auto=format&fit=crop&q=80",
+      "المقاس": "M",
+      "الكمية المتوفرة (العدد)": 8,
+      "سعر البيع (ج.م)": 650,
+      "سعر التكلفة (ج.م)": 380,
+    },
+    {
+      "معرف المنتج (Product ID)": "sotra-prod-sample-1",
+      "اسم المنتج بالعربية": "قميص كتان ملكي أوفر سايز",
+      "القسم الرئيسي": "shirts",
+      "اللون": "أسود",
+      "كود اللون (Hex)": "#111111",
+      "رابط صورة اللون": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=900&auto=format&fit=crop&q=80",
+      "المقاس": "L",
+      "الكمية المتوفرة (العدد)": 12,
+      "سعر البيع (ج.م)": 650,
+      "سعر التكلفة (ج.م)": 380,
+    },
+  ];
+
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(sampleRows);
-  ws["!cols"] = [
+
+  const wsCatalog = XLSX.utils.json_to_sheet(sampleCatalogRows);
+  wsCatalog["!cols"] = [
     { wch: 22 },
     { wch: 30 },
     { wch: 25 },
@@ -333,14 +494,31 @@ export function exportProductsExcelTemplate() {
     { wch: 20 },
     { wch: 16 },
     { wch: 15 },
+    { wch: 18 },
     { wch: 22 },
     { wch: 40 },
+    { wch: 45 },
     { wch: 35 },
     { wch: 16 },
     { wch: 45 },
   ];
+  XLSX.utils.book_append_sheet(wb, wsCatalog, "نموذج_إضافة_المنتجات");
 
-  XLSX.utils.book_append_sheet(wb, ws, "نموذج_إضافة_المنتجات");
+  const wsVariants = XLSX.utils.json_to_sheet(sampleVariantRows);
+  wsVariants["!cols"] = [
+    { wch: 22 },
+    { wch: 28 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 16 },
+    { wch: 35 },
+    { wch: 12 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 16 },
+  ];
+  XLSX.utils.book_append_sheet(wb, wsVariants, "توزيع_مخزون_المقاسات_والألوان");
+
   const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([excelBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -544,7 +722,128 @@ export function normalizeImportedProduct(raw: any, index: number = 0): Product {
 }
 
 /**
- * Parse Excel (.xlsx, .xls) or CSV file into normalized Product array
+ * Helper to parse color variant string
+ */
+function parseColorVariants(rawColors: any, mainImg: string): ColorVariant[] {
+  let colors: ColorVariant[] = [];
+
+  if (typeof rawColors === "string" && rawColors.trim()) {
+    const colorParts = rawColors.split(/[,|،]+/).map((s: string) => s.trim()).filter(Boolean);
+    colors = colorParts.map((part: string, cIdx: number) => {
+      const segments = part.split(":");
+      if (segments.length >= 3) {
+        return {
+          name: segments[0].trim() || `Color ${cIdx + 1}`,
+          nameAr: segments[0].trim() || `لون ${cIdx + 1}`,
+          hex: segments[1].trim() || "#111111",
+          image: sanitizeImageUrl(segments.slice(2).join(":").trim() || mainImg, SOTRA_PRODUCT_PLACEHOLDER),
+        };
+      } else if (segments.length === 2) {
+        const isHex = segments[1].trim().startsWith("#");
+        return {
+          name: segments[0].trim() || `Color ${cIdx + 1}`,
+          nameAr: segments[0].trim() || `لون ${cIdx + 1}`,
+          hex: isHex ? segments[1].trim() : "#111111",
+          image: sanitizeImageUrl(!isHex ? segments[1].trim() : mainImg, SOTRA_PRODUCT_PLACEHOLDER),
+        };
+      } else {
+        return {
+          name: part || `Color ${cIdx + 1}`,
+          nameAr: part || `لون ${cIdx + 1}`,
+          hex: "#111111",
+          image: sanitizeImageUrl(mainImg, SOTRA_PRODUCT_PLACEHOLDER),
+        };
+      }
+    });
+  } else if (Array.isArray(rawColors) && rawColors.length > 0) {
+    colors = rawColors.map((c: any, cIdx: number) => ({
+      name: String(c.name || c.colorName || `Color ${cIdx + 1}`),
+      nameAr: String(c.nameAr || c.colorNameAr || c.name || `لون ${cIdx + 1}`),
+      hex: String(c.hex || c.colorCode || "#111111"),
+      image: sanitizeImageUrl(c.image || mainImg, SOTRA_PRODUCT_PLACEHOLDER),
+      backImage: c.backImage ? sanitizeImageUrl(c.backImage, SOTRA_PRODUCT_PLACEHOLDER) : undefined,
+    }));
+  }
+
+  if (colors.length === 0) {
+    colors = [
+      {
+        name: "Default",
+        nameAr: "اللون الأساسي",
+        hex: "#111111",
+        image: sanitizeImageUrl(mainImg, SOTRA_PRODUCT_PLACEHOLDER),
+      },
+    ];
+  }
+
+  return colors;
+}
+
+/**
+ * Parse inline inventory string format like:
+ * "أبيض:M:10 | أبيض:L:15 | أسود:M:8 | أسود:L:12"
+ * or "Black:M:10, Black:L:15"
+ * or "أبيض_M=10; أسود_L=15"
+ */
+function parseInlineInventoryString(invStr: string, defaultRetail: number = 0, defaultWholesale: number = 0): Record<string, { qty: number; wholesalePrice?: number; salePrice?: number }> {
+  const result: Record<string, { qty: number; wholesalePrice?: number; salePrice?: number }> = {};
+  if (!invStr || typeof invStr !== "string") return result;
+
+  const entries = invStr.split(/[,|;،\n]+/).map((s) => s.trim()).filter(Boolean);
+  for (const entry of entries) {
+    // Try matching formats: "Color:Size:Qty" or "Color:Size:Qty:Cost" or "Color_Size=Qty" or "Color-Size: Qty"
+    const colonParts = entry.split(":");
+    if (colonParts.length >= 3) {
+      const col = colonParts[0].trim();
+      const sz = colonParts[1].trim();
+      const qty = Math.max(0, parseInt(colonParts[2].trim(), 10) || 0);
+      const cost = colonParts[3] ? Number(colonParts[3].trim()) : defaultWholesale;
+      if (col && sz) {
+        const item = { qty, wholesalePrice: cost || defaultWholesale, salePrice: defaultRetail };
+        result[`${col}_${sz}`] = item;
+        result[`${col}__${sz}`] = item;
+      }
+    } else if (colonParts.length === 2) {
+      // Could be "Color_Size: 10" or "Size: 10"
+      const left = colonParts[0].trim();
+      const qty = Math.max(0, parseInt(colonParts[1].trim(), 10) || 0);
+      const subParts = left.split(/[_\-\/]/);
+      if (subParts.length >= 2) {
+        const col = subParts[0].trim();
+        const sz = subParts[1].trim();
+        const item = { qty, wholesalePrice: defaultWholesale, salePrice: defaultRetail };
+        result[`${col}_${sz}`] = item;
+        result[`${col}__${sz}`] = item;
+      } else {
+        // Assume default color
+        const sz = left;
+        const item = { qty, wholesalePrice: defaultWholesale, salePrice: defaultRetail };
+        result[`افتراضي_${sz}`] = item;
+        result[`Default__${sz}`] = item;
+      }
+    } else {
+      // Try '=' format e.g. "Color_Size=10"
+      const eqParts = entry.split("=");
+      if (eqParts.length === 2) {
+        const left = eqParts[0].trim();
+        const qty = Math.max(0, parseInt(eqParts[1].trim(), 10) || 0);
+        const subParts = left.split(/[_\-\/:]/);
+        if (subParts.length >= 2) {
+          const col = subParts[0].trim();
+          const sz = subParts[1].trim();
+          const item = { qty, wholesalePrice: defaultWholesale, salePrice: defaultRetail };
+          result[`${col}_${sz}`] = item;
+          result[`${col}__${sz}`] = item;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Parse Excel (.xlsx, .xls) or CSV file into normalized Product array with complete variant stock
  */
 export async function parseExcelOrCsvFile(file: File): Promise<{
   success: boolean;
@@ -558,18 +857,108 @@ export async function parseExcelOrCsvFile(file: File): Promise<{
       return { success: false, error: "ملف الإكسيل فارغ ولا يحتوي على أي شيت." };
     }
 
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const rows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+    // 1. Identify Sheets: Catalog Sheet and Variants/Inventory Sheet
+    let catalogSheetName = workbook.SheetNames[0];
+    let variantSheetName: string | null = null;
 
-    if (!rows || rows.length === 0) {
+    for (const sName of workbook.SheetNames) {
+      const lower = sName.toLowerCase();
+      if (
+        lower.includes("مخزون") ||
+        lower.includes("المخزون") ||
+        lower.includes("inventory") ||
+        lower.includes("variants") ||
+        lower.includes("variant") ||
+        lower.includes("كميات")
+      ) {
+        variantSheetName = sName;
+        break;
+      }
+    }
+
+    // If first sheet is specifically the variants sheet and there's a catalog sheet
+    if (workbook.SheetNames.length > 1 && !variantSheetName) {
+      variantSheetName = workbook.SheetNames[1];
+    }
+
+    const catalogRows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[catalogSheetName], { defval: "" });
+
+    // Optional variant sheet rows
+    let variantRows: any[] = [];
+    if (variantSheetName && workbook.Sheets[variantSheetName]) {
+      variantRows = XLSX.utils.sheet_to_json(workbook.Sheets[variantSheetName], { defval: "" });
+    }
+
+    if ((!catalogRows || catalogRows.length === 0) && (!variantRows || variantRows.length === 0)) {
       return { success: false, error: "شيت الإكسيل فارغ لا يحتوي على أي صفوف أو بيانات منتجات." };
     }
 
-    const products: Product[] = rows.map((r, idx) => {
+    // Map variant rows by Product ID
+    const variantMapByProdId = new Map<string, Array<{
+      color: string;
+      hex?: string;
+      image?: string;
+      size: string;
+      qty: number;
+      wholesalePrice?: number;
+      salePrice?: number;
+    }>>();
+
+    if (variantRows && variantRows.length > 0) {
+      variantRows.forEach((vr) => {
+        const pId = String(
+          vr["معرف المنتج (Product ID)"] ||
+            vr["معرف المنتج"] ||
+            vr["ID (المعرف)"] ||
+            vr["المعرف (ID)"] ||
+            vr["Product ID"] ||
+            vr["ID"] ||
+            vr["id"] ||
+            ""
+        ).trim();
+
+        const colorName = String(
+          vr["اللون (Color)"] ||
+            vr["اللون"] ||
+            vr["Color"] ||
+            vr["color"] ||
+            "افتراضي"
+        ).trim();
+
+        const hex = String(vr["كود اللون (Hex)"] || vr["كود اللون"] || vr["Hex"] || vr["hex"] || "#111111").trim();
+        const image = String(vr["رابط صورة اللون (Image URL)"] || vr["رابط صورة اللون"] || vr["صورة اللون"] || vr["Image"] || vr["image"] || "").trim();
+
+        const size = String(
+          vr["المقاس (Size)"] ||
+            vr["المقاس"] ||
+            vr["Size"] ||
+            vr["size"] ||
+            "L"
+        ).trim();
+
+        const rawQty = vr["الكمية المتوفرة (العدد)"] ?? vr["الكمية المتوفرة (Stock Qty)"] ?? vr["الكمية المتوفرة"] ?? vr["الكمية"] ?? vr["العدد"] ?? vr["Qty"] ?? vr["qty"] ?? vr["stock"] ?? 10;
+        const qty = Math.max(0, parseInt(String(rawQty), 10) || 0);
+
+        const rawSale = vr["سعر البيع (ج.م)"] ?? vr["سعر البيع (Sale Price)"] ?? vr["سعر البيع"] ?? vr["Sale Price"] ?? vr["price"];
+        const salePrice = rawSale !== "" && rawSale !== undefined ? Number(rawSale) : undefined;
+
+        const rawCost = vr["سعر التكلفة (ج.م)"] ?? vr["سعر التكلفة (Wholesale Cost)"] ?? vr["سعر التكلفة"] ?? vr["سعر الجملة"] ?? vr["cost"];
+        const wholesalePrice = rawCost !== "" && rawCost !== undefined ? Number(rawCost) : undefined;
+
+        if (pId) {
+          const list = variantMapByProdId.get(pId) || [];
+          list.push({ color: colorName, hex, image, size, qty, wholesalePrice, salePrice });
+          variantMapByProdId.set(pId, list);
+        }
+      });
+    }
+
+    // Process Catalog Rows
+    const products: Product[] = catalogRows.map((r, idx) => {
       const id = String(
         r["المعرف (ID)"] ||
           r["ID (المعرف)"] ||
+          r["معرف المنتج (Product ID)"] ||
           r["ID"] ||
           r["id"] ||
           r["المعرف"] ||
@@ -624,7 +1013,7 @@ export async function parseExcelOrCsvFile(file: File): Promise<{
       );
 
       const rawWholesale = r["سعر الجملة (ج.م)"] || r["WholesalePrice (سعر الجملة)"] || r["سعر الجملة"] || r["wholesalePrice"];
-      const wholesalePrice = rawWholesale !== "" && rawWholesale !== undefined && rawWholesale !== null ? Number(rawWholesale) : undefined;
+      const wholesalePrice = rawWholesale !== "" && rawWholesale !== undefined && rawWholesale !== null ? Number(rawWholesale) : 0;
 
       const rawOriginal = r["السعر قبل الخصم (ج.م)"] || r["OriginalPrice (السعر الأصلي قبل الخصم)"] || r["السعر قبل الخصم"] || r["originalPrice"];
       const originalPrice = rawOriginal !== "" && rawOriginal !== undefined && rawOriginal !== null ? Number(rawOriginal) : undefined;
@@ -651,7 +1040,7 @@ export async function parseExcelOrCsvFile(file: File): Promise<{
       ).trim();
 
       const rawInStock = String(r["متوفر بالمخزون"] || r["InStock (متوفر بالمخزون)"] || r["inStock"] || "نعم").trim();
-      const inStock = !(
+      let inStock = !(
         rawInStock === "لا" ||
         rawInStock.toLowerCase() === "no" ||
         rawInStock.toLowerCase() === "false" ||
@@ -668,7 +1057,7 @@ export async function parseExcelOrCsvFile(file: File): Promise<{
           ""
       ).trim();
 
-      // Parse Sizes
+      // 2. Parse Sizes
       const rawSizes = r["المقاسات (مفصولة بفاصلة)"] || r["Sizes (المقاسات)"] || r["المقاسات"] || r["sizes"];
       let sizes: string[] = ["S", "M", "L", "XL", "2XL"];
       if (typeof rawSizes === "string" && rawSizes.trim()) {
@@ -681,50 +1070,102 @@ export async function parseExcelOrCsvFile(file: File): Promise<{
         sizes = rawSizes.map(String);
       }
 
-      // Parse Colors
+      // 3. Parse Colors
       const rawColors = r["الألوان (الاسم:كود_اللون:رابط_الصورة)"] || r["Colors (الألوان المتاحة)"] || r["الألوان"] || r["colors"];
-      let colors: ColorVariant[] = [];
+      let colors: ColorVariant[] = parseColorVariants(rawColors, mainImg);
 
-      if (typeof rawColors === "string" && rawColors.trim()) {
-        const colorParts = rawColors.split(/[,|،]+/).map((s: string) => s.trim()).filter(Boolean);
-        colors = colorParts.map((part: string, cIdx: number) => {
-          // If in format name:hex:image or name:image
-          const segments = part.split(":");
-          if (segments.length >= 3) {
-            return {
-              name: segments[0].trim() || `Color ${cIdx + 1}`,
-              nameAr: segments[0].trim() || `لون ${cIdx + 1}`,
-              hex: segments[1].trim() || "#111111",
-              image: sanitizeImageUrl(segments.slice(2).join(":").trim() || mainImg, SOTRA_PRODUCT_PLACEHOLDER),
-            };
-          } else if (segments.length === 2) {
-            const isHex = segments[1].trim().startsWith("#");
-            return {
-              name: segments[0].trim() || `Color ${cIdx + 1}`,
-              nameAr: segments[0].trim() || `لون ${cIdx + 1}`,
-              hex: isHex ? segments[1].trim() : "#111111",
-              image: sanitizeImageUrl(!isHex ? segments[1].trim() : mainImg, SOTRA_PRODUCT_PLACEHOLDER),
-            };
-          } else {
-            return {
-              name: part || `Color ${cIdx + 1}`,
-              nameAr: part || `لون ${cIdx + 1}`,
-              hex: "#111111",
-              image: sanitizeImageUrl(mainImg, SOTRA_PRODUCT_PLACEHOLDER),
-            };
+      // 4. Parse Inventory Quantities per Size and Color
+      const productInventory: Record<string, { qty: number; wholesalePrice?: number; salePrice?: number }> = {};
+
+      // A. Check for inline breakdown column
+      const rawInvStr =
+        r["توزيع كميات المخزون (اللون:المقاس:العدد)"] ||
+        r["كميات المخزون (اللون:المقاس:العدد)"] ||
+        r["كميات المخزون"] ||
+        r["المخزون"] ||
+        r["الكميات"] ||
+        r["inventory"];
+
+      if (rawInvStr && typeof rawInvStr === "string" && rawInvStr.trim()) {
+        const inlineMap = parseInlineInventoryString(rawInvStr, price, wholesalePrice);
+        Object.entries(inlineMap).forEach(([k, val]) => {
+          productInventory[k] = val;
+        });
+      }
+
+      // B. Check if separate Sheet 2 variants exist for this product
+      const sheet2Variants = variantMapByProdId.get(id);
+      if (sheet2Variants && sheet2Variants.length > 0) {
+        sheet2Variants.forEach((v) => {
+          const kPrimary = `${v.color}_${v.size}`;
+          const item = {
+            qty: v.qty,
+            wholesalePrice: v.wholesalePrice !== undefined ? v.wholesalePrice : wholesalePrice,
+            salePrice: v.salePrice !== undefined ? v.salePrice : price,
+          };
+          productInventory[kPrimary] = item;
+          productInventory[`${v.color}__${v.size}`] = item;
+
+          // Ensure color is in product's colors
+          const existsCol = colors.some((c) => c.nameAr === v.color || c.name === v.color);
+          if (!existsCol && v.color) {
+            colors.push({
+              name: v.color,
+              nameAr: v.color,
+              hex: v.hex || "#111111",
+              image: sanitizeImageUrl(v.image || mainImg, SOTRA_PRODUCT_PLACEHOLDER),
+            });
+          }
+
+          // Ensure size is in sizes
+          if (v.size && !sizes.includes(v.size)) {
+            sizes.push(v.size);
           }
         });
       }
 
-      if (colors.length === 0) {
-        colors = [
-          {
-            name: "Default",
-            nameAr: "اللون الأساسي",
-            hex: "#111111",
-            image: sanitizeImageUrl(mainImg, SOTRA_PRODUCT_PLACEHOLDER),
-          },
-        ];
+      // C. Check for direct size columns (e.g. "S", "M", "L", "XL", "2XL", "كمية S", etc.)
+      const standardSizesCheck = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "30", "32", "34", "36", "38"];
+      standardSizesCheck.forEach((sz) => {
+        const sizeVal = r[sz] !== undefined && r[sz] !== "" ? r[sz] : (r[`كمية ${sz}`] !== undefined && r[`كمية ${sz}`] !== "" ? r[`كمية ${sz}`] : undefined);
+        if (sizeVal !== undefined) {
+          const qty = Math.max(0, parseInt(String(sizeVal), 10) || 0);
+          if (!sizes.includes(sz)) sizes.push(sz);
+          colors.forEach((col) => {
+            const colName = col.nameAr || col.name || "افتراضي";
+            const k = `${colName}_${sz}`;
+            if (productInventory[k] === undefined) {
+              const item = { qty, wholesalePrice, salePrice: price };
+              productInventory[k] = item;
+              productInventory[`${colName}__${sz}`] = item;
+            }
+          });
+        }
+      });
+
+      // D. If no specific inventory was found, initialize default matrix entries
+      if (Object.keys(productInventory).length === 0) {
+        const defaultQty = inStock ? 10 : 0;
+        colors.forEach((col) => {
+          const colName = col.nameAr || col.name || "افتراضي";
+          sizes.forEach((sz) => {
+            const k = `${colName}_${sz}`;
+            const item = { qty: defaultQty, wholesalePrice, salePrice: price };
+            productInventory[k] = item;
+            productInventory[`${colName}__${sz}`] = item;
+          });
+        });
+      }
+
+      // E. Calculate total inventory count and sync inStock status
+      const totalInventoryQty = Object.values(productInventory).reduce(
+        (sum, item) => sum + (Number(item?.qty) || 0),
+        0
+      );
+      if (totalInventoryQty <= 0 && rawInStock !== "نعم" && rawInStock !== "yes" && rawInStock !== "true") {
+        inStock = false;
+      } else if (totalInventoryQty > 0) {
+        inStock = true;
       }
 
       // Badge
@@ -764,7 +1205,7 @@ export async function parseExcelOrCsvFile(file: File): Promise<{
         badge,
         descriptionAr,
         description: descriptionAr,
-        inventory: {},
+        inventory: productInventory,
       });
     });
 
