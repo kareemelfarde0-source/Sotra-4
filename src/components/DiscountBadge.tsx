@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Flame, Zap, Tag, Clock } from "lucide-react";
+import { Zap, Tag, Clock } from "lucide-react";
 import { DiscountBadgeStyle } from "../types";
 
 interface DiscountBadgeProps {
@@ -34,7 +34,7 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
   const textAr = `خصم ${pct}%`;
   const textEn = `-${pct}% OFF`;
 
-  // 1. VERTICAL RIBBON ON LEFT (شريط رأسي يسار الكارت بالطول)
+  // 1. VERTICAL RIBBON ON LEFT
   if (style === "vertical_left") {
     return (
       <div
@@ -47,14 +47,13 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
             boxShadow: "0 4px 12px rgba(220, 38, 38, 0.45)",
           }}
         >
-          <Flame className="w-3 h-3 text-amber-300 mb-0.5 fill-amber-300 animate-pulse" />
           <span className="text-[10px] sm:text-[11px] font-black font-brand tracking-tighter leading-none [writing-mode:vertical-rl] rotate-180 uppercase">
             {lang === "ar" ? textAr : textEn}
           </span>
           <span className="h-1" />
         </div>
         {timeRemainingText && (
-          <span className="bg-black/90 backdrop-blur-xs text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+          <span className="bg-black/90 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
             ⏳ {timeRemainingText}
           </span>
         )}
@@ -62,7 +61,7 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 2. VERTICAL RIBBON ON RIGHT (شريط رأسي يمين الكارت بالطول - الجانب الآخر)
+  // 2. VERTICAL RIBBON ON RIGHT
   if (style === "vertical_right") {
     return (
       <div
@@ -75,14 +74,13 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
             boxShadow: "0 4px 12px rgba(220, 38, 38, 0.45)",
           }}
         >
-          <Flame className="w-3 h-3 text-amber-300 mb-0.5 fill-amber-300 animate-pulse" />
           <span className="text-[10px] sm:text-[11px] font-black font-brand tracking-tighter leading-none [writing-mode:vertical-rl] rotate-180 uppercase">
             {lang === "ar" ? textAr : textEn}
           </span>
           <span className="h-1" />
         </div>
         {timeRemainingText && (
-          <span className="bg-black/90 backdrop-blur-xs text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+          <span className="bg-black/90 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
             ⏳ {timeRemainingText}
           </span>
         )}
@@ -90,14 +88,13 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 3. HORIZONTAL RIBBON BAR (شريط أفقي عريض أسفل الصورة)
+  // 3. HORIZONTAL RIBBON BAR
   if (style === "horizontal_bar") {
     return (
       <div
         className={`absolute bottom-0 inset-x-0 z-20 pointer-events-none select-none bg-gradient-to-r from-neutral-950 via-[#dc2626] to-neutral-950 text-white py-1 px-2.5 flex items-center justify-between shadow-md ${className}`}
       >
         <div className="flex items-center gap-1.5">
-          <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
           <span className="text-[10px] sm:text-xs font-black font-brand uppercase tracking-wider">
             {lang === "ar" ? `وفر ${pct}% الآن` : `SAVE ${pct}% NOW`}
           </span>
@@ -113,12 +110,11 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 4. ABOVE PRODUCT TITLE (شريط أنيق أعلى اسم وسعر المنتج)
+  // 4. ABOVE PRODUCT TITLE
   if (style === "above_title") {
     return (
       <div className={`flex items-center gap-1.5 mb-1.5 select-none flex-wrap ${className}`}>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-black bg-red-50 text-red-700 border border-red-200 font-brand">
-          <Flame className="w-3 h-3 text-red-600 fill-red-600" />
           <span>{lang === "ar" ? textAr : textEn}</span>
         </span>
         {timeRemainingText && (
@@ -135,16 +131,15 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 5. TOP LEFT CORNER BADGE (شريط أفقي أعلى اليسار)
+  // 5. TOP LEFT CORNER BADGE
   if (style === "horizontal_top_left") {
     return (
       <div className={`absolute top-2.5 left-2.5 z-20 pointer-events-none select-none flex flex-col items-start gap-1 ${className}`}>
         <div className="bg-[#dc2626] text-white px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-black shadow-md flex items-center gap-1 font-brand uppercase border border-red-500/50">
-          <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
           <span>{lang === "ar" ? textAr : textEn}</span>
         </div>
         {timeRemainingText && (
-          <span className="bg-black/90 backdrop-blur-xs text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+          <span className="bg-black/90 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
             ⏳ {timeRemainingText}
           </span>
         )}
@@ -152,16 +147,15 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 6. TOP RIGHT CORNER BADGE (شريط أفقي أعلى اليمين)
+  // 6. TOP RIGHT CORNER BADGE
   if (style === "horizontal_top_right") {
     return (
       <div className={`absolute top-2.5 right-2.5 z-20 pointer-events-none select-none flex flex-col items-end gap-1 ${className}`}>
         <div className="bg-[#dc2626] text-white px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-black shadow-md flex items-center gap-1 font-brand uppercase border border-red-500/50">
-          <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
           <span>{lang === "ar" ? textAr : textEn}</span>
         </div>
         {timeRemainingText && (
-          <span className="bg-black/90 backdrop-blur-xs text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+          <span className="bg-black/90 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
             ⏳ {timeRemainingText}
           </span>
         )}
@@ -169,16 +163,15 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 7. PILL CORNER LEFT (كبسولة دائرية أعلى اليسار)
+  // 7. PILL CORNER LEFT
   if (style === "pill_corner" || style === "pill_corner_left") {
     return (
       <div className={`absolute top-2.5 left-2.5 z-20 pointer-events-none select-none flex flex-col items-start gap-1 ${className}`}>
         <div className="bg-[#dc2626] text-white px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-black shadow-lg flex items-center gap-1 border border-white/30 font-brand">
-          <Sparkles className="w-3 h-3 text-amber-300" />
           <span>-{pct}%</span>
         </div>
         {timeRemainingText && (
-          <span className="bg-black/90 backdrop-blur-xs text-amber-300 text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+          <span className="bg-black/90 backdrop-blur-xs text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
             ⏳ {timeRemainingText}
           </span>
         )}
@@ -186,16 +179,15 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 8. PILL CORNER RIGHT (كبسولة دائرية أعلى اليمين)
+  // 8. PILL CORNER RIGHT
   if (style === "pill_corner_right") {
     return (
       <div className={`absolute top-2.5 right-2.5 z-20 pointer-events-none select-none flex flex-col items-end gap-1 ${className}`}>
         <div className="bg-[#dc2626] text-white px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-black shadow-lg flex items-center gap-1 border border-white/30 font-brand">
-          <Sparkles className="w-3 h-3 text-amber-300" />
           <span>-{pct}%</span>
         </div>
         {timeRemainingText && (
-          <span className="bg-black/90 backdrop-blur-xs text-amber-300 text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+          <span className="bg-black/90 backdrop-blur-xs text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
             ⏳ {timeRemainingText}
           </span>
         )}
@@ -203,22 +195,21 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 9. TOP BANNER RIBBON (شريط أحمر عريض أعلى الصورة)
+  // 9. TOP BANNER RIBBON
   if (style === "banner_ribbon") {
     return (
       <div className={`absolute top-0 inset-x-0 z-20 pointer-events-none select-none bg-gradient-to-r from-[#dc2626] via-red-600 to-[#b91c1c] text-white py-1 px-2 text-center shadow-md font-brand uppercase tracking-wider flex items-center justify-center gap-1.5 ${className}`}>
-        <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
         <span className="text-[10px] sm:text-xs font-black">
           {lang === "ar" ? `خصم حصري ${pct}% لفترة محدودة` : `SPECIAL OFFER -${pct}% OFF`}
         </span>
         {timeRemainingText && (
-          <span className="text-amber-200 text-[9px] font-bold ms-1">({timeRemainingText})</span>
+          <span className="text-white/90 text-[9px] font-bold ms-1">({timeRemainingText})</span>
         )}
       </div>
     );
   }
 
-  // 10. DIAGONAL CORNER LEFT (شريط مائل بالزاوية اليسرى)
+  // 10. DIAGONAL CORNER LEFT
   if (style === "diagonal_corner_left") {
     return (
       <div className={`absolute top-0 left-0 z-20 overflow-hidden w-16 h-16 sm:w-20 sm:h-20 pointer-events-none select-none ${className}`}>
@@ -227,7 +218,7 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
         </div>
         {timeRemainingText && (
           <div className="absolute bottom-0 left-0">
-            <span className="bg-black/90 text-amber-300 text-[8px] font-bold px-1 rounded shadow-xs">
+            <span className="bg-black/90 text-white text-[8px] font-bold px-1 rounded shadow-xs">
               ⏳ {timeRemainingText}
             </span>
           </div>
@@ -236,7 +227,7 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
     );
   }
 
-  // 11. DIAGONAL CORNER RIGHT (شريط مائل بالزاوية اليمنى - الافتراضي للمائل)
+  // 11. DIAGONAL CORNER RIGHT
   return (
     <div className={`absolute top-0 right-0 z-20 overflow-hidden w-16 h-16 sm:w-20 sm:h-20 pointer-events-none select-none ${className}`}>
       <div className="absolute top-[14px] -right-[24px] w-[92px] sm:w-[104px] text-center py-0.5 sm:py-1 bg-[#dc2626] text-white font-black text-[9px] sm:text-[11px] shadow-md tracking-wider font-brand uppercase transform rotate-45 select-none border-y border-red-400/40">
@@ -244,7 +235,7 @@ export const DiscountBadge: React.FC<DiscountBadgeProps> = ({
       </div>
       {timeRemainingText && (
         <div className="absolute bottom-0 right-0">
-          <span className="bg-black/90 text-amber-300 text-[8px] font-bold px-1 rounded shadow-xs">
+          <span className="bg-black/90 text-white text-[8px] font-bold px-1 rounded shadow-xs">
             ⏳ {timeRemainingText}
           </span>
         </div>

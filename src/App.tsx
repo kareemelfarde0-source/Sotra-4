@@ -24,6 +24,9 @@ import { NavigationMenuDrawer } from "./components/NavigationMenuDrawer";
 import { ImageLightbox } from "./components/ImageLightbox";
 import { PromotionalPopupModal } from "./components/PromotionalPopupModal";
 import { QuickViewModal } from "./components/QuickViewModal";
+import { FlashSaleSection } from "./components/FlashSaleSection";
+import { OutfitsSection } from "./components/OutfitsSection";
+import { OutfitDetailPage } from "./components/OutfitDetailPage";
 import { Footer } from "./components/Footer";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { SplashScreen } from "./components/SplashScreen";
@@ -37,6 +40,7 @@ import {
   Order,
   Product,
   PromoCode,
+  OutfitBundle,
 } from "./types";
 import {
   loadAdminData,
@@ -96,7 +100,7 @@ export default function App() {
 
   // --- UI Navigation State (Default language is 'ar') ---
   const [currentView, setCurrentView] = useState<
-    "home" | "category-detail" | "offer-category-detail" | "products-group-detail" | "product-detail" | "cart" | "profile" | "search" | "admin"
+    "home" | "category-detail" | "offer-category-detail" | "products-group-detail" | "product-detail" | "outfit-detail" | "cart" | "profile" | "search" | "admin"
   >("home");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [selectedOfferCategoryId, setSelectedOfferCategoryId] = useState<string>("");
@@ -107,11 +111,13 @@ export default function App() {
     bannerImage?: string;
   }>({ productIds: [] });
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
+  const [selectedOutfitForDetail, setSelectedOutfitForDetail] = useState<OutfitBundle | null>(null);
 
   // --- Modals State ---
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [activeProductModal, setActiveProductModal] = useState<{ product: Product; selectedColorIndex: number } | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<{ product: Product; selectedColorIndex: number } | null>(null);
+  const [selectedOutfitForModal, setSelectedOutfitForModal] = useState<OutfitBundle | null>(null);
   const [isFastCheckoutOpen, setIsFastCheckoutOpen] = useState(false);
   const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
@@ -291,9 +297,15 @@ export default function App() {
     product: Product,
     selectedColor: ColorVariant,
     size: string,
-    quantity: number = 1
+    quantity: number = 1,
+    overridePrice?: number,
+    overrideOriginalPrice?: number | null,
+    discountNote?: string,
+    isFlashSale?: boolean
   ) => {
-    const itemKey = `${product.id}-${selectedColor.name}-${size}`;
+    const itemPrice = overridePrice !== undefined && overridePrice > 0 ? overridePrice : product.price;
+    const itemOrigPrice = overrideOriginalPrice !== undefined ? overrideOriginalPrice : (product.originalPrice || (overridePrice && overridePrice < product.price ? product.price : null));
+    const itemKey = `${product.id}-${selectedColor.name}-${size}${overridePrice ? `-${overridePrice}` : ""}`;
     setCart((prev) => {
       const existing = prev.find((item) => item.id === itemKey);
       if (existing) {
@@ -310,12 +322,14 @@ export default function App() {
           productId: product.id,
           title: product.title,
           titleAr: product.titleAr,
-          price: product.price,
-          originalPrice: product.originalPrice,
+          price: itemPrice,
+          originalPrice: itemOrigPrice,
           selectedColor,
           selectedSize: size,
           quantity,
           category: product.category,
+          bundleDiscountNoteAr: discountNote,
+          isFlashSale: isFlashSale || false,
         },
       ];
     });
@@ -325,9 +339,58 @@ export default function App() {
     product: Product,
     selectedColor: ColorVariant,
     size: string,
-    quantity: number = 1
+    quantity: number = 1,
+    overridePrice?: number,
+    overrideOriginalPrice?: number | null,
+    discountNote?: string,
+    isFlashSale?: boolean
   ) => {
-    handleAddToCart(product, selectedColor, size, quantity);
+    handleAddToCart(product, selectedColor, size, quantity, overridePrice, overrideOriginalPrice, discountNote, isFlashSale);
+    setIsFastCheckoutOpen(true);
+  };
+
+  const handleAddOutfitToCart = (
+    outfitItems: { product: Product; color: ColorVariant; size: string; discountedPrice: number }[]
+  ) => {
+    setCart((prev) => {
+      let updated = [...prev];
+      outfitItems.forEach((item) => {
+        const existingIdx = updated.findIndex(
+          (ci) =>
+            ci.productId === item.product.id &&
+            ci.selectedColor?.name === item.color.name &&
+            ci.selectedSize === item.size &&
+            ci.price === item.discountedPrice
+        );
+        if (existingIdx >= 0) {
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            quantity: updated[existingIdx].quantity + 1,
+          };
+        } else {
+          updated.push({
+            id: `${item.product.id}-${item.color.name}-${item.size}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            productId: item.product.id,
+            title: item.product.title,
+            titleAr: item.product.titleAr,
+            price: item.discountedPrice,
+            originalPrice: item.product.originalPrice && item.product.originalPrice > item.discountedPrice ? item.product.originalPrice : item.product.price,
+            selectedColor: item.color,
+            selectedSize: item.size,
+            quantity: 1,
+            category: item.product.category,
+            bundleDiscountNoteAr: "خصم طقم كامل",
+          });
+        }
+      });
+      return updated;
+    });
+  };
+
+  const handleQuickOrderOutfit = (
+    outfitItems: { product: Product; color: ColorVariant; size: string; discountedPrice: number }[]
+  ) => {
+    handleAddOutfitToCart(outfitItems);
     setIsFastCheckoutOpen(true);
   };
 
@@ -468,6 +531,7 @@ export default function App() {
                 setSelectedCategoryId("all");
                 setSelectedOfferCategoryId("");
                 setSelectedProductForDetail(null);
+                setSelectedOutfitForDetail(null);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               onToggleLang={() => setLang((prev) => (prev === "ar" ? "en" : "ar"))}
@@ -495,6 +559,28 @@ export default function App() {
               <HeroCategorySlider
                 categories={adminData.categories}
                 onSelectCategory={handleOpenCategoryDetail}
+                lang={lang}
+              />
+
+              {/* Flash Sale Section (Time-Limited Urgency Deals) */}
+              <FlashSaleSection
+                config={adminData.flashSaleConfig}
+                products={adminData.products}
+                onOpenProductModal={handleOpenProductDetail}
+                onQuickAdd={handleAddToCart}
+                onQuickOrderNow={handleQuickOrderNow}
+                lang={lang}
+              />
+
+              {/* Outfits (Shop The Look) Section */}
+              <OutfitsSection
+                outfits={adminData.outfits}
+                products={adminData.products}
+                onSelectOutfit={(outfit) => {
+                  setSelectedOutfitForDetail(outfit);
+                  setCurrentView("outfit-detail");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
                 lang={lang}
               />
 
@@ -681,6 +767,18 @@ export default function App() {
               onBuyNow={handleQuickOrderNow}
               onBack={() => setCurrentView("home")}
               onOpenLightbox={handleOpenLightbox}
+              lang={lang}
+            />
+          )}
+
+          {currentView === "outfit-detail" && selectedOutfitForDetail && (
+            <OutfitDetailPage
+              outfit={selectedOutfitForDetail}
+              allProducts={adminData.products}
+              onBack={() => setCurrentView("home")}
+              onAddToCart={handleAddOutfitToCart}
+              onFastCheckoutOutfit={handleQuickOrderOutfit}
+              onOpenProductModal={(p) => handleOpenProductDetail(p)}
               lang={lang}
             />
           )}

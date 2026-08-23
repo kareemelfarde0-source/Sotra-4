@@ -235,10 +235,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
       console.warn("Storage profile error:", err);
     }
 
-    // 1. Decrement inventory
-    decrementInventory(items);
-
-    // 2. Create Completed Order
+    // 1. Create Completed Order with pending stock deduction until admin confirms shipping fee
     const completedOrder: Order = {
       orderId: "SOTRA-" + Math.floor(100000 + Math.random() * 900000),
       createdAt: new Date().toISOString(),
@@ -257,9 +254,11 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
       paymentMethod: formData.paymentMethod,
       senderPhoneOrInstaPayId: formData.senderPhoneOrInstaPayId,
       transactionReference: formData.transactionReference,
+      stockDeducted: false,
+      shippingConfirmed: false,
     };
 
-    // 3. Save to Firebase Firestore (both Order and Customer Collections)
+    // 2. Save to Firebase Firestore (both Order and Customer Collections)
     try {
       addMyOrderId(completedOrder.orderId);
       await saveOrderToFirebase(completedOrder);

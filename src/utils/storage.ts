@@ -32,6 +32,9 @@ import {
   DEFAULT_FOOTER_CONFIG,
   DEFAULT_SPLASH_CONFIG,
   DEFAULT_POPUP_CONFIG,
+  DEFAULT_FLASH_SALE_CONFIG,
+  DEFAULT_OUTFITS,
+  DEFAULT_HOME_SECTIONS_CONFIG,
   saveAdminDataToFirebase,
   saveOrderToFirebase,
   updateOrderInFirebase,
@@ -58,6 +61,9 @@ import {
   saveSplashScreenConfigToFirestore,
   savePopupBannerConfigToFirestore,
   saveDiscountBadgeStyleToFirestore,
+  saveFlashSaleConfigToFirestore,
+  saveOutfitsToFirestore,
+  saveHomeSectionsConfigToFirestore,
   syncAllStoreDataToFirebase,
   wipeEntireStoreDatabase,
   wipeSelectiveStoreCollection,
@@ -76,6 +82,9 @@ export {
   DEFAULT_FOOTER_CONFIG,
   DEFAULT_SPLASH_CONFIG,
   DEFAULT_POPUP_CONFIG,
+  DEFAULT_FLASH_SALE_CONFIG,
+  DEFAULT_OUTFITS,
+  DEFAULT_HOME_SECTIONS_CONFIG,
   SOTRA_PRODUCT_PLACEHOLDER,
   SOTRA_BANNER_PLACEHOLDER,
   SOTRA_CATEGORY_PLACEHOLDER,
@@ -107,6 +116,9 @@ export {
   saveSplashScreenConfigToFirestore,
   savePopupBannerConfigToFirestore,
   saveDiscountBadgeStyleToFirestore,
+  saveFlashSaleConfigToFirestore,
+  saveOutfitsToFirestore,
+  saveHomeSectionsConfigToFirestore,
   saveAdminDataToFirebase,
   syncAllStoreDataToFirebase,
   saveOrderToFirebase,
@@ -186,6 +198,9 @@ export function loadAdminData(): AdminData {
           splashScreenConfig: parsed.splashScreenConfig ? { ...DEFAULT_SPLASH_CONFIG, ...parsed.splashScreenConfig } : DEFAULT_SPLASH_CONFIG,
           popupBannerConfig: parsed.popupBannerConfig ? { ...DEFAULT_POPUP_CONFIG, ...parsed.popupBannerConfig } : DEFAULT_POPUP_CONFIG,
           discountBadgeStyle: parsed.discountBadgeStyle || "vertical_left",
+          flashSaleConfig: parsed.flashSaleConfig ? { ...DEFAULT_FLASH_SALE_CONFIG, ...parsed.flashSaleConfig } : DEFAULT_FLASH_SALE_CONFIG,
+          outfits: Array.isArray(parsed.outfits) ? parsed.outfits : DEFAULT_OUTFITS,
+          homeSectionsConfig: parsed.homeSectionsConfig ? { ...DEFAULT_HOME_SECTIONS_CONFIG, ...parsed.homeSectionsConfig } : DEFAULT_HOME_SECTIONS_CONFIG,
           updatedAt: parsed.updatedAt || Date.now(),
         };
       }
@@ -206,6 +221,9 @@ export function loadAdminData(): AdminData {
     splashScreenConfig: DEFAULT_SPLASH_CONFIG,
     popupBannerConfig: DEFAULT_POPUP_CONFIG,
     discountBadgeStyle: "vertical_left",
+    flashSaleConfig: DEFAULT_FLASH_SALE_CONFIG,
+    outfits: DEFAULT_OUTFITS,
+    homeSectionsConfig: DEFAULT_HOME_SECTIONS_CONFIG,
     updatedAt: Date.now(),
   };
   return initialData;
@@ -614,12 +632,16 @@ export function cancelOrder(
       return { success: false, message: "هذا الطلب ملغي بالفعل", updatedOrders: orders };
     }
 
-    restoreInventory(targetOrder.items || []);
+    // Only restore inventory if stock was deducted previously
+    if (targetOrder.stockDeducted !== false) {
+      restoreInventory(targetOrder.items || []);
+      targetOrder.stockDeducted = false;
+    }
 
     targetOrder.trackingStatus = "cancelled";
     targetOrder.cancelledAt = new Date().toISOString();
     targetOrder.updatedAt = new Date().toISOString();
-    targetOrder.cancellationReason = reason || "تم إلغاء الطلب بناءً على رغبة العميل وإرجاع المنتجات للمخزون";
+    targetOrder.cancellationReason = reason || "تم إلغاء الطلب وإرجاع المنتجات للمخزون";
 
     orders[orderIndex] = targetOrder;
     localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
@@ -628,12 +650,74 @@ export function cancelOrder(
       cancelledAt: targetOrder.cancelledAt,
       cancellationReason: targetOrder.cancellationReason,
       updatedAt: targetOrder.updatedAt,
+      stockDeducted: false,
     }).catch((e) => console.warn("Firebase updateOrder error:", e));
 
     return { success: true, message: "تم إلغاء الطلب بنجاح وإرجاع الكمية إلى المخزون", updatedOrders: orders };
   } catch (e) {
     console.error("Cancel order error:", e);
     return { success: false, message: "حدث خطأ أثناء إلغاء الطلب", updatedOrders: [] };
+  }
+}
+
+// Confirm shipping fee payment from admin panel and deduct inventory
+export function confirmOrderShipping(
+  orderId: string,
+  currentOrdersList?: Order[]
+): { success: boolean; message: string; updatedOrders: Order[] } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
+    let orders: Order[] = raw ? JSON.parse(raw) : [];
+
+    if (currentOrdersList && currentOrdersList.length > 0) {
+      const orderMap = new Map<string, Order>();
+      orders.forEach((o) => { if (o.orderId) orderMap.set(o.orderId.trim(), o); });
+      currentOrdersList.forEach((o) => { if (o.orderId) orderMap.set(o.orderId.trim(), o); });
+      orders = Array.from(orderMap.values());
+    }
+
+    const trimmedId = (orderId || "").trim();
+    const idx = orders.findIndex(
+      (o) => o.orderId && o.orderId.trim().toLowerCase() === trimmedId.toLowerCase()
+    );
+
+    if (idx === -1) {
+      return { success: false, message: "لم يتم العثور على الطلب", updatedOrders: orders };
+    }
+
+    const target = orders[idx];
+    const nowIso = new Date().toISOString();
+
+    // Deduct inventory if not yet deducted
+    if (!target.stockDeducted) {
+      decrementInventory(target.items || []);
+      target.stockDeducted = true;
+    }
+
+    target.shippingConfirmed = true;
+    target.shippingConfirmedAt = nowIso;
+    target.trackingStatus = "payment_confirmed";
+    target.updatedAt = nowIso;
+
+    orders[idx] = target;
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+
+    updateOrderInFirebase(trimmedId, {
+      shippingConfirmed: true,
+      shippingConfirmedAt: nowIso,
+      stockDeducted: true,
+      trackingStatus: "payment_confirmed",
+      updatedAt: nowIso,
+    }).catch((e) => console.warn("Firebase confirmOrderShipping error:", e));
+
+    return {
+      success: true,
+      message: "تم تأكيد رسوم الشحن وخصم الكميات من المخزون بنجاح!",
+      updatedOrders: orders,
+    };
+  } catch (e) {
+    console.error("confirmOrderShipping error:", e);
+    return { success: false, message: "حدث خطأ أثناء تأكيد الشحن", updatedOrders: [] };
   }
 }
 
@@ -740,10 +824,30 @@ export function updateOrderStatus(
       updatedAt: nowIso,
     };
 
+    // If status changed to cancelled and stock was deducted, restore it
     if (newStatus === "cancelled" && prevStatus !== "cancelled") {
-      restoreInventory(orders[idx].items || []);
+      if (orders[idx].stockDeducted !== false) {
+        restoreInventory(orders[idx].items || []);
+        orders[idx].stockDeducted = false;
+      }
       orders[idx].cancelledAt = nowIso;
       orders[idx].cancellationReason = "تم إلغاء الطلب من لوحة الإدارة وإرجاع المخزون";
+    }
+
+    // If status is confirmed / processing / shipped / delivered and stock was NOT deducted yet, deduct it
+    const activeConfirmedStatuses: OrderStatus[] = [
+      "payment_confirmed",
+      "preparing",
+      "processing",
+      "shipped",
+      "out_for_delivery",
+      "delivered",
+    ];
+    if (activeConfirmedStatuses.includes(newStatus) && !orders[idx].stockDeducted) {
+      decrementInventory(orders[idx].items || []);
+      orders[idx].stockDeducted = true;
+      orders[idx].shippingConfirmed = true;
+      orders[idx].shippingConfirmedAt = orders[idx].shippingConfirmedAt || nowIso;
     }
 
     localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
@@ -752,6 +856,9 @@ export function updateOrderStatus(
       updatedAt: orders[idx].updatedAt,
       cancelledAt: orders[idx].cancelledAt,
       cancellationReason: orders[idx].cancellationReason,
+      stockDeducted: orders[idx].stockDeducted,
+      shippingConfirmed: orders[idx].shippingConfirmed,
+      shippingConfirmedAt: orders[idx].shippingConfirmedAt,
     }).catch((e) => console.warn("Firebase updateOrderStatus error:", e));
 
     return { success: true, updatedOrders: orders };

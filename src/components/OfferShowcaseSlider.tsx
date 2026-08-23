@@ -254,7 +254,6 @@ export const OfferShowcaseSlider: React.FC<OfferShowcaseSliderProps> = ({
                 : "bg-white text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 border-neutral-200"
             }`}
           >
-            <Sparkles className={`w-3.5 h-3.5 ${selectedOfferTab === "all" ? "text-neutral-950" : "text-neutral-400"}`} />
             <span>{lang === "ar" ? "كل العروض" : "All Deals"}</span>
           </button>
 

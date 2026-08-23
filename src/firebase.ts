@@ -34,6 +34,10 @@ import {
   Governorate,
   PopupBannerConfig,
   DiscountBadgeStyle,
+  FlashSaleConfig,
+  OutfitBundle,
+  HomeSectionsConfig,
+  PromoBannerStyleConfig,
 } from "./types";
 import {
   DEFAULT_CATEGORIES,
@@ -44,6 +48,43 @@ import {
   DEFAULT_PAYMENT_CONFIG,
   EGYPTIAN_GOVERNORATES,
 } from "./data/defaultData";
+
+export const DEFAULT_FLASH_SALE_CONFIG: FlashSaleConfig = {
+  isEnabled: false,
+  titleAr: "عروض الفلاش سيل الحصرية 🔥",
+  titleEn: "Exclusive Flash Sale Deals",
+  subtitleAr: "تخفيضات استثنائية لفترة محدودة جداً - تنتهي بانتهاء الوقت",
+  subtitleEn: "Limited-time deals with extra urgency discounts",
+  endDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+  bannerImage: "",
+  badgeTextAr: "فلاش ديل",
+  themeColor: "#dc2626",
+  items: [],
+};
+
+export const DEFAULT_OUTFITS: OutfitBundle[] = [];
+
+export const DEFAULT_HOME_SECTIONS_CONFIG: HomeSectionsConfig = {
+  showAnnouncementBar: true,
+  showPromoBanner: true,
+  showHeroCategoriesSlider: true,
+  showFlashSale: true,
+  showOutfits: true,
+  showOfferCategories: true,
+  showCategoryPills: true,
+  showFilterBar: true,
+  showProductsGrid: true,
+  showFooter: true,
+  promoBannerStyle: {
+    heightMobile: 260,
+    heightDesktop: 480,
+    customHeightText: "480",
+    aspectRatio: "custom",
+    objectFit: "cover",
+    borderRadius: 16,
+    fullWidth: false,
+  },
+};
 
 export const DEFAULT_POPUP_CONFIG: PopupBannerConfig = {
   isEnabled: true,
@@ -296,6 +337,9 @@ export function getDefaultAdminData(): AdminData {
     splashScreenConfig: DEFAULT_SPLASH_CONFIG,
     popupBannerConfig: DEFAULT_POPUP_CONFIG,
     discountBadgeStyle: "vertical_left",
+    flashSaleConfig: DEFAULT_FLASH_SALE_CONFIG,
+    outfits: DEFAULT_OUTFITS,
+    homeSectionsConfig: DEFAULT_HOME_SECTIONS_CONFIG,
     updatedAt: Date.now(),
   };
 }
@@ -497,6 +541,8 @@ export function subscribeToFirebaseAdminData(
           splashScreenConfig: remoteData.splashScreenConfig ? { ...DEFAULT_SPLASH_CONFIG, ...remoteData.splashScreenConfig } : currentAdminData.splashScreenConfig || DEFAULT_SPLASH_CONFIG,
           popupBannerConfig: remoteData.popupBannerConfig ? { ...DEFAULT_POPUP_CONFIG, ...remoteData.popupBannerConfig } : currentAdminData.popupBannerConfig || DEFAULT_POPUP_CONFIG,
           discountBadgeStyle: remoteData.discountBadgeStyle || currentAdminData.discountBadgeStyle || "vertical_left",
+          flashSaleConfig: remoteData.flashSaleConfig ? { ...DEFAULT_FLASH_SALE_CONFIG, ...remoteData.flashSaleConfig } : currentAdminData.flashSaleConfig || DEFAULT_FLASH_SALE_CONFIG,
+          outfits: Array.isArray(remoteData.outfits) ? remoteData.outfits : currentAdminData.outfits || DEFAULT_OUTFITS,
           updatedAt: remoteData.updatedAt || Date.now(),
         };
         notifyUpdate();
@@ -672,6 +718,8 @@ export async function saveAdminDataToFirebase(data: AdminData): Promise<boolean>
       splashScreenConfig: data.splashScreenConfig || DEFAULT_SPLASH_CONFIG,
       popupBannerConfig: data.popupBannerConfig || DEFAULT_POPUP_CONFIG,
       discountBadgeStyle: data.discountBadgeStyle || "vertical_left",
+      flashSaleConfig: data.flashSaleConfig || DEFAULT_FLASH_SALE_CONFIG,
+      outfits: data.outfits || DEFAULT_OUTFITS,
       updatedAt: Date.now(),
     });
     await setDoc(docRef, payload);
@@ -759,6 +807,42 @@ export async function saveSplashScreenConfigToFirestore(splashScreenConfig: Spla
   try {
     const docRef = doc(db, STORE_CONFIG_COLLECTION, ADMIN_DATA_DOC);
     await setDoc(docRef, cleanForFirestore({ splashScreenConfig, updatedAt: Date.now() }), { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
+  }
+}
+
+export async function saveFlashSaleConfigToFirestore(flashSaleConfig: FlashSaleConfig): Promise<boolean> {
+  const docPath = `${STORE_CONFIG_COLLECTION}/${ADMIN_DATA_DOC}`;
+  try {
+    const docRef = doc(db, STORE_CONFIG_COLLECTION, ADMIN_DATA_DOC);
+    await setDoc(docRef, cleanForFirestore({ flashSaleConfig, updatedAt: Date.now() }), { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
+  }
+}
+
+export async function saveOutfitsToFirestore(outfits: OutfitBundle[]): Promise<boolean> {
+  const docPath = `${STORE_CONFIG_COLLECTION}/${ADMIN_DATA_DOC}`;
+  try {
+    const docRef = doc(db, STORE_CONFIG_COLLECTION, ADMIN_DATA_DOC);
+    await setDoc(docRef, cleanForFirestore({ outfits, updatedAt: Date.now() }), { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
+  }
+}
+
+export async function saveHomeSectionsConfigToFirestore(homeSectionsConfig: HomeSectionsConfig): Promise<boolean> {
+  const docPath = `${STORE_CONFIG_COLLECTION}/${ADMIN_DATA_DOC}`;
+  try {
+    const docRef = doc(db, STORE_CONFIG_COLLECTION, ADMIN_DATA_DOC);
+    await setDoc(docRef, cleanForFirestore({ homeSectionsConfig, updatedAt: Date.now() }), { merge: true });
     return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);

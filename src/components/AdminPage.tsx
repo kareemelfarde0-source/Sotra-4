@@ -55,10 +55,15 @@ import {
   CustomerProfile,
   PopupBannerConfig,
   DiscountBadgeStyle,
+  FlashSaleConfig,
+  OutfitBundle,
+  HomeSectionsConfig,
 } from "../types";
 import {
   saveAdminData,
+  loadAdminData,
   updateOrderStatus,
+  confirmOrderShipping,
   saveProductToFirestore,
   deleteProductFromFirestore,
   saveCategoryToFirestore,
@@ -73,7 +78,11 @@ import {
   saveSplashScreenConfigToFirestore,
   savePopupBannerConfigToFirestore,
   saveDiscountBadgeStyleToFirestore,
+  saveFlashSaleConfigToFirestore,
+  saveOutfitsToFirestore,
+  saveHomeSectionsConfigToFirestore,
   DEFAULT_POPUP_CONFIG,
+  DEFAULT_HOME_SECTIONS_CONFIG,
   saveAdminDataToFirebase,
   syncAllStoreDataToFirebase,
   savePaymentConfigToFirestore,
@@ -90,6 +99,9 @@ import { AdminPaymentAndShippingSettings } from "./AdminPaymentAndShippingSettin
 import { AdminCustomersTab } from "./AdminCustomersTab";
 import { AdminPopupBannerSettings } from "./AdminPopupBannerSettings";
 import { AdminDatabaseManager } from "./AdminDatabaseManager";
+import { AdminFlashSaleSettings } from "./AdminFlashSaleSettings";
+import { AdminOutfitsSettings } from "./AdminOutfitsSettings";
+import { AdminHomeSectionsSettings } from "./AdminHomeSectionsSettings";
 import {
   parseBackupFile,
   exportProductsToExcel,
@@ -168,8 +180,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   lang,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "orders" | "products" | "categories" | "offerCategories" | "banners" | "popup" | "inventory" | "coupons" | "payment" | "customers" | "footer" | "splash" | "backup" | "database"
-  >("orders");
+    "homeSections" | "orders" | "products" | "flashSale" | "outfits" | "categories" | "offerCategories" | "banners" | "popup" | "inventory" | "coupons" | "payment" | "customers" | "footer" | "splash" | "backup" | "database"
+  >("homeSections");
 
   // Search and Filter states
   const [ordersSearch, setOrdersSearch] = useState("");
@@ -248,6 +260,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     saveAdminData(newData);
     saveGovernoratesToFirestore(newGovs).catch((e) => console.warn(e));
     showToast("✅ تم حفظ وتحديث أسعار ومواعيد شحن المحافظات بنجاح!");
+  };
+
+  const handleSaveFlashSaleConfig = (newConfig: FlashSaleConfig) => {
+    const newData = { ...adminData, flashSaleConfig: newConfig };
+    onUpdateAdminData(newData);
+    saveAdminData(newData);
+    saveFlashSaleConfigToFirestore(newConfig).catch((e) => console.warn(e));
+    showToast("✅ تم حفظ وتحديث إعدادات ومنتجات الفلاش سيل في قاعدة البيانات بنجاح!");
+  };
+
+  const handleSaveOutfits = (newOutfits: OutfitBundle[]) => {
+    const newData = { ...adminData, outfits: newOutfits };
+    onUpdateAdminData(newData);
+    saveAdminData(newData);
+    saveOutfitsToFirestore(newOutfits).catch((e) => console.warn(e));
+    showToast("✅ تم حفظ وتحديث أطقم نسق إطلالتك في قاعدة البيانات بنجاح!");
   };
 
   // Sub-Modals states
@@ -613,6 +641,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     saveDiscountBadgeStyleToFirestore(discountBadgeStyle).catch((e) => console.warn(e));
   };
 
+  const handleSaveHomeSectionsConfig = (homeSectionsConfig: HomeSectionsConfig) => {
+    const newData = { ...adminData, homeSectionsConfig };
+    onUpdateAdminData(newData);
+    saveAdminData(newData);
+    saveHomeSectionsConfigToFirestore(homeSectionsConfig).catch((e) => console.warn(e));
+    showToast("✅ تم حفظ وتطبيق تخصيص الشاشة الرئيسية وحجم البنر بنجاح!");
+  };
+
   // ORDER STATUS CHANGE & SYNCHRONIZATION
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
     const res = updateOrderStatus(orderId, newStatus, orders);
@@ -625,12 +661,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       onUpdateOrders(fallbackList);
     }
 
+    // Refresh products inventory in adminData state
+    onUpdateAdminData(loadAdminData());
+
     const statusObj = ORDER_STATUS_FLOW.find((s) => s.status === newStatus);
     showToast(
       newStatus === "cancelled"
-        ? "تم إلغاء الطلب وإرجاع المنتجات للمخزون"
-        : `تم تحديث حالة الطلب إلى: ${statusObj?.labelAr || newStatus}`
+        ? "✅ تم إلغاء الطلب وإرجاع المنتجات للمخزون"
+        : `✅ تم تحديث حالة الطلب إلى: ${statusObj?.labelAr || newStatus}`
     );
+  };
+
+  const handleConfirmShippingFee = (orderId: string) => {
+    const res = confirmOrderShipping(orderId, orders);
+    if (res.success && res.updatedOrders.length > 0) {
+      onUpdateOrders(res.updatedOrders);
+      onUpdateAdminData(loadAdminData());
+      showToast(res.message);
+    } else {
+      showToast(res.message || "حدث خطأ أثناء تأكيد الشحن");
+    }
   };
 
   const [isFirebaseSyncing, setIsFirebaseSyncing] = useState(false);
@@ -732,10 +782,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         {/* Navigation Tabs Bar */}
         <div className="bg-white p-2 rounded-2xl shadow-xs border border-neutral-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {[
+            { id: "homeSections", label: "🏠 تخصيص الشاشة الرئيسية والبنر", count: "تحكم وإخفاء" },
             { id: "orders", label: "📋 تتبع وإدارة الطلبات", count: orders.length },
             { id: "customers", label: "👥 قاعدة بيانات العملاء", count: "CRM" },
             { id: "payment", label: "💳 رسوم الدفع والشحن", count: "فودافون/إنستاباي" },
             { id: "products", label: "👕 المنتجات وتفاصيلها", count: adminData.products.length },
+            { id: "flashSale", label: "🔥 عروض الفلاش سيل", count: adminData.flashSaleConfig?.isEnabled ? "مفعّل" : "مغلق" },
+            { id: "outfits", label: "✨ نسّق إطلالتك (الأطقم)", count: adminData.outfits?.length || 0 },
             { id: "inventory", label: "📦 المخزون وهوامش الربح", count: adminData.products.length },
             { id: "categories", label: "🗂️ الأقسام الرئيسية", count: adminData.categories.length },
             { id: "offerCategories", label: "🏷️ أقسام العروض (إظهار/إخفاء)", count: adminData.offerCategories.length },
@@ -774,6 +827,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
             <span>{toastMessage}</span>
           </div>
+        )}
+
+        {/* TAB 0: HOME SECTIONS & BANNER SIZING CONFIG */}
+        {activeTab === "homeSections" && (
+          <AdminHomeSectionsSettings
+            config={adminData.homeSectionsConfig}
+            banners={adminData.banners}
+            onSave={handleSaveHomeSectionsConfig}
+            onNavigateTab={(tabId) => setActiveTab(tabId as any)}
+            lang={lang}
+          />
         )}
 
         {/* TAB 1: ORDERS MANAGEMENT */}
@@ -874,15 +938,46 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             </div>
 
                             {/* Shipping Transfer Details */}
-                            {(o.vodafoneSenderPhone || o.shippingTransferNumber) && (
-                              <div className="mt-1 flex items-center gap-2 text-xs bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-lg w-fit font-bold">
+                            {(o.vodafoneSenderPhone || o.shippingTransferNumber || o.senderPhoneOrInstaPayId || o.transactionReference) && (
+                              <div className="mt-1 flex items-center gap-2 text-xs bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-lg w-fit font-bold flex-wrap">
                                 <DollarSign className="w-3.5 h-3.5 text-amber-700" />
                                 <span>
-                                  رقم تحويل رسوم الشحن (فودافون كاش):{" "}
-                                  <strong className="font-mono text-red-600">{o.vodafoneSenderPhone || o.shippingTransferNumber}</strong>
+                                  بيانات تحويل الشحن:{" "}
+                                  <strong className="font-mono text-red-600">
+                                    {o.vodafoneSenderPhone || o.shippingTransferNumber || o.senderPhoneOrInstaPayId || "تم التحويل"}
+                                  </strong>
+                                  {o.transactionReference && (
+                                    <span className="text-neutral-600 font-normal mr-2">
+                                      (مرجع: {o.transactionReference})
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             )}
+
+                            {/* Stock Deduction Status & Confirmation Indicator */}
+                            <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+                              {o.stockDeducted ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  تم خصم الكميات من المخزون
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                    المخزون معلق (بانتظار تأكيد استلام الشحن)
+                                  </span>
+                                  <button
+                                    onClick={() => handleConfirmShippingFee(o.orderId)}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer text-xs"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    تأكيد ثمن الشحن وخصم المخزون
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Order Status Controller */}
@@ -1342,27 +1437,37 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   إضافة وتعديل شرائح البانر مع إمكانية ربط كل شريحة بقسم رئيسي، قسم عروض، أو منتج محدد مباشرة.
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setEditingBanner({
-                    id: Date.now(),
-                    title: "",
-                    titleAr: "",
-                    subtitle: "",
-                    subtitleAr: "",
-                    tag: "EXCLUSIVE",
-                    tagAr: "عرض حصري",
-                    image: "",
-                    targetType: "category",
-                    targetCategory: adminData.categories[0]?.id || "",
-                  });
-                  setIsBannerModalOpen(true);
-                }}
-                className="px-4 py-2 bg-neutral-950 hover:bg-[#dc2626] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>إضافة شريحة بنر</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("homeSections")}
+                  className="px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-black rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Sliders className="w-4 h-4 text-neutral-600" />
+                  <span>تعديل حجم وأبعاد البنر</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingBanner({
+                      id: Date.now(),
+                      title: "",
+                      titleAr: "",
+                      subtitle: "",
+                      subtitleAr: "",
+                      tag: "EXCLUSIVE",
+                      tagAr: "عرض حصري",
+                      image: "",
+                      targetType: "category",
+                      targetCategory: adminData.categories[0]?.id || "",
+                    });
+                    setIsBannerModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-neutral-950 hover:bg-[#dc2626] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>إضافة شريحة بنر</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1640,6 +1745,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             onSaveConfig={handleSavePopupConfig}
             onSaveDiscountStyle={handleSaveDiscountBadgeStyle}
             showToast={showToast}
+            lang={lang}
+          />
+        )}
+
+        {/* TAB: FLASH SALE SETTINGS */}
+        {activeTab === "flashSale" && (
+          <AdminFlashSaleSettings
+            config={adminData.flashSaleConfig}
+            allProducts={adminData.products}
+            onSave={handleSaveFlashSaleConfig}
+            lang={lang}
+          />
+        )}
+
+        {/* TAB: OUTFITS (SHOP THE LOOK) SETTINGS */}
+        {activeTab === "outfits" && (
+          <AdminOutfitsSettings
+            outfits={adminData.outfits}
+            allProducts={adminData.products}
+            onSave={handleSaveOutfits}
             lang={lang}
           />
         )}

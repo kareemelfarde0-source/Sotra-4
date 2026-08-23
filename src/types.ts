@@ -191,13 +191,16 @@ export interface CartItem {
   productId: string;
   title: string;
   titleAr: string;
-  fit: string;
-  fitAr: string;
+  fit?: string;
+  fitAr?: string;
   price: number;
   originalPrice?: number | null;
   selectedColor: ColorVariant;
   selectedSize: string;
   quantity: number;
+  category?: string;
+  bundleDiscountNoteAr?: string;
+  isFlashSale?: boolean;
 }
 
 export type PaymentMethodType = "vodafone_cash" | "instapay";
@@ -271,9 +274,49 @@ export interface Order {
   cancelledAt?: string;
   cancellationReason?: string;
   updatedAt?: string;
+  stockDeducted?: boolean; // هل تم خصم الكميات من المخزون بعد تأكيد رسوم الشحن
+  shippingConfirmed?: boolean; // هل تم تأكيد استلام ثمن الشحن من لوحة الإدارة
+  shippingConfirmedAt?: string;
 }
 
 export type PopupAspectRatio = "18:9" | "4:3" | "16:9" | "1:1" | "3:4" | "9:16" | "auto";
+
+export interface FlashSaleItem {
+  productId: string;
+  flashPrice?: number; // Override price during flash sale
+  discountPercent?: number; // Custom flash discount percentage
+  soldPercentage?: number; // Urgency progress (e.g. 82%)
+  customBadgeAr?: string;
+}
+
+export interface FlashSaleConfig {
+  isEnabled: boolean;
+  titleAr: string;
+  titleEn?: string;
+  subtitleAr?: string;
+  subtitleEn?: string;
+  endDate: string; // ISO datetime string, e.g. "2026-08-25T23:59:59"
+  bannerImage?: string;
+  badgeTextAr?: string;
+  themeColor?: string; // Accent color e.g. "#ef4444"
+  items: FlashSaleItem[];
+}
+
+export interface OutfitBundle {
+  id: string;
+  titleAr: string;
+  titleEn?: string;
+  subtitleAr?: string;
+  subtitleEn?: string;
+  image: string;
+  productIds: string[]; // IDs of products making up the look
+  discountPercent: number; // Extra discount when buying full outfit (e.g. 15%)
+  badgeAr?: string;
+  descriptionAr?: string;
+  isVisible?: boolean;
+  isActive?: boolean;
+  createdAt?: number;
+}
 
 export interface PopupBannerConfig {
   isEnabled: boolean;
@@ -295,6 +338,30 @@ export interface PopupBannerConfig {
   delaySeconds?: number;
 }
 
+export interface PromoBannerStyleConfig {
+  heightMobile?: number; // e.g. 260
+  heightDesktop?: number; // e.g. 480
+  customHeightText?: string; // Text field for custom written height e.g. "480px" or "520"
+  aspectRatio?: "custom" | "16:9" | "21:9" | "4:3" | "3:2" | "auto";
+  objectFit?: "cover" | "contain" | "fill";
+  borderRadius?: number; // border radius in px e.g. 16
+  fullWidth?: boolean;
+}
+
+export interface HomeSectionsConfig {
+  showAnnouncementBar: boolean; // شريط الإعلانات والتنبيهات العلوي
+  showPromoBanner: boolean; // البنر الإعلاني الرئيسي
+  showHeroCategoriesSlider: boolean; // دولاب / التمرير الجانبي للأقسام
+  showFlashSale: boolean; // قسم عروض الفلاش سيل
+  showOutfits: boolean; // قسم نسق إطلالتك (الأطقم)
+  showOfferCategories: boolean; // قسم تصنيفات العروض
+  showCategoryPills: boolean; // شريط تصنيفات المنتجات السريعة
+  showFilterBar: boolean; // شريط الفلاتر والترتيب
+  showProductsGrid: boolean; // شبكة عرض المنتجات
+  showFooter: boolean; // الفوتر وروابط التواصل والضمانات
+  promoBannerStyle?: PromoBannerStyleConfig;
+}
+
 export interface AdminData {
   categories: Category[];
   offerCategories: OfferCategory[];
@@ -307,6 +374,9 @@ export interface AdminData {
   splashScreenConfig?: SplashScreenConfig;
   popupBannerConfig?: PopupBannerConfig;
   discountBadgeStyle?: DiscountBadgeStyle;
+  flashSaleConfig?: FlashSaleConfig;
+  outfits?: OutfitBundle[];
+  homeSectionsConfig?: HomeSectionsConfig;
   updatedAt?: number;
 }
 

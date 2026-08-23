@@ -70,6 +70,12 @@ export const CartPage: React.FC<CartPageProps> = ({
   }, []);
 
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const totalOriginalSum = items.reduce((acc, item) => {
+    const orig = item.originalPrice && item.originalPrice > item.price ? item.originalPrice : item.price;
+    return acc + orig * item.quantity;
+  }, 0);
+  const bundleAndFlashSavings = totalOriginalSum - subtotal;
+
   const freeShippingThreshold = 1500;
   const progressPercent = Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
   const remainingForFree = Math.max(0, freeShippingThreshold - subtotal);
@@ -262,8 +268,25 @@ export const CartPage: React.FC<CartPageProps> = ({
                             {item?.selectedSize || ""}
                           </span>
                         </div>
-                        <div className="text-sm font-black text-neutral-950 font-brand pt-1">
-                          {item.price} <span className="text-xs font-normal text-neutral-500 font-sans">{lang === "ar" ? "ج.م" : "LE"}</span>
+                        <div className="flex items-center gap-2 pt-1 flex-wrap">
+                          <span className="text-sm font-black text-red-600 font-brand">
+                            {item.price} <span className="text-xs font-normal text-neutral-500 font-sans">{lang === "ar" ? "ج.م" : "LE"}</span>
+                          </span>
+                          {item.originalPrice && item.originalPrice > item.price && (
+                            <span className="text-xs text-neutral-400 line-through font-mono">
+                              {item.originalPrice} {lang === "ar" ? "ج.م" : "LE"}
+                            </span>
+                          )}
+                          {item.bundleDiscountNoteAr && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
+                              {item.bundleDiscountNoteAr}
+                            </span>
+                          )}
+                          {item.isFlashSale && (
+                            <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold">
+                              {lang === "ar" ? "عرض فلاش سيل" : "Flash Sale"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -374,6 +397,15 @@ export const CartPage: React.FC<CartPageProps> = ({
                       {subtotal} {lang === "ar" ? "ج.م" : "LE"}
                     </span>
                   </div>
+
+                  {bundleAndFlashSavings > 0 && (
+                    <div className="flex justify-between text-red-600 font-bold">
+                      <span>{lang === "ar" ? "وفرت من خصم الأطقم والعروض" : "Bundle & Deals Savings"}</span>
+                      <span className="font-mono">
+                        -{bundleAndFlashSavings} {lang === "ar" ? "ج.م" : "LE"}
+                      </span>
+                    </div>
+                  )}
 
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-emerald-700 font-bold">
